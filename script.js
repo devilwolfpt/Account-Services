@@ -4,7 +4,110 @@
  * - Modo Desenvolvedor: Ativado exclusivamente via Bookmarklet da Barra de Favoritos (ou atalho Ctrl+Shift+D).
  */
 
+/* ==========================================================================
+   SSO ENGINE — Account Services
+   Gera tokens de sessão e redireciona para apps externas após login.
+   ========================================================================== */
+const SSO_SESSION_KEY = 'as_sso_session';
+const SSO_TOKEN_VERSION = 1;
+
+/** Gera um token SSO auto-contido (base64 JSON). Não criptográfico — adequado para sites estáticos. */
+function generateSSOToken(user) {
+  const payload = {
+    v: SSO_TOKEN_VERSION,
+    name: user.name,
+    email: user.email,
+    picture: user.picture || null,
+    provider: user.provider || 'email',
+    iat: Date.now(),
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 dias
+  };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+}
+
+/** Verifica e devolve o payload de um token SSO, ou null se inválido/expirado. */
+function verifySSOToken(token) {
+  try {
+    const payload = JSON.parse(decodeURIComponent(escape(atob(token))));
+    if (!payload || payload.v !== SSO_TOKEN_VERSION) return null;
+    if (Date.now() > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/** Guarda a sessão activa no localStorage desta origem. */
+function saveSession(user) {
+  const token = generateSSOToken(user);
+  localStorage.setItem(SSO_SESSION_KEY, token);
+  return token;
+}
+
+/** Lê a sessão activa, ou null se não existir/expirada. */
+function getSession() {
+  const token = localStorage.getItem(SSO_SESSION_KEY);
+  if (!token) return null;
+  return verifySSOToken(token);
+}
+
+/** Apaga a sessão activa. */
+function clearSession() {
+  localStorage.removeItem(SSO_SESSION_KEY);
+}
+
+/** Redireciona de volta para a app externa com o token SSO no URL. */
+function redirectToApp(redirectUrl, token, user) {
+  const url = new URL(redirectUrl);
+  url.searchParams.set('sso_token', token);
+  url.searchParams.set('sso_name', user.name || '');
+  url.searchParams.set('sso_email', user.email || '');
+  url.searchParams.set('sso_provider', user.provider || 'email');
+  if (user.picture) url.searchParams.set('sso_picture', user.picture);
+  window.location.href = url.toString();
+}
+
+// Expor funções SSO globalmente para uso externo
+window.AccountServicesSSO = {
+  getSession,
+  clearSession,
+  verifySSOToken,
+  generateSSOToken
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+
+  /* ==========================================================================
+     SSO — LEITURA DE PARÂMETROS E RETOMA DE SESSÃO
+     ========================================================================== */
+  const ssoParams = new URLSearchParams(window.location.search);
+  const ssoRedirectTo = ssoParams.get('redirect_to');    // URL de retorno
+  const ssoAppName   = ssoParams.get('app_name') || '';  // Nome da app
+  const ssoAppLogo   = ssoParams.get('app_logo') || '';  // Logo da app (URL)
+
+  // Mostra banner de consentimento se vier de uma app externa
+  if (ssoRedirectTo) {
+    const banner = document.createElement('div');
+    banner.id = 'sso-consent-banner';
+    banner.innerHTML = `
+      <div class="sso-banner-inner">
+        ${ssoAppLogo ? `<img src="${ssoAppLogo}" class="sso-app-logo" alt="${ssoAppName}">` : ''}
+        <div class="sso-banner-text">
+          <strong>${ssoAppName || 'Uma aplicação'}</strong> está a pedir acesso à tua conta.
+          <span>Inicia sessão para continuar.</span>
+        </div>
+      </div>`;
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+
+  // Retoma sessão automática se já estiver autenticado
+  const existingSession = getSession();
+  if (existingSession && ssoRedirectTo) {
+    const token = localStorage.getItem(SSO_SESSION_KEY);
+    redirectToApp(ssoRedirectTo, token, existingSession);
+    return; // Não renderiza a página de login
+  }
+
   // DOM Elements - Modo Desenvolvedor
   const devNavBar = document.getElementById('devNavBar');
   const btnDevSideBySide = document.getElementById('btnDevSideBySide');
@@ -448,6 +551,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalCloseBtn = document.getElementById('modalCloseBtn');
 
   function openSession(user) {
+    // Guarda a sessão SSO
+    const token = saveSession(user);
+
+    // Se veio de uma app externa via SSO, redireciona imediatamente
+    if (ssoRedirectTo) {
+      showToast(`Sessão iniciada! A redirecionar para ${ssoAppName || 'a aplicação'}...`, 'success');
+      setTimeout(() => redirectToApp(ssoRedirectTo, token, user), 1200);
+      return;
+    }
+
+    // Modo normal — mostra modal de confirmação
     if (!sessionModal) return;
     modalUserName.textContent = user.name || 'Utilizador';
     modalUserEmail.textContent = user.email;
@@ -479,6 +593,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sessionModal.classList.add('active');
   }
+
+  // Logout global
+  window.accountServicesLogout = function() {
+    clearSession();
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+    showToast('Sessão terminada.', 'info');
+  };
 
   if (modalCloseBtn) {
     modalCloseBtn.addEventListener('click', () => {

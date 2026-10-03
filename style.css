@@ -3,6 +3,53 @@
    RÉPLICA 1:1 PIXEL-PERFECT DO DESIGN ORIGINAL
    ========================================================================== */
 
+/* ==========================================================================
+   SSO — BANNER DE CONSENTIMENTO
+   Aparece no topo quando a página é acedida via ?redirect_to=
+   ========================================================================== */
+#sso-consent-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff;
+  padding: 12px 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.sso-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.sso-app-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #fff;
+  padding: 3px;
+}
+.sso-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.sso-banner-text strong {
+  font-size: 14px;
+  color: #a78bfa;
+}
+.sso-banner-text span {
+  color: #94a3b8;
+}
+/* Empurra o conteúdo para baixo do banner */
+body:has(#sso-consent-banner) .auth-page-wrapper,
+body:has(#sso-consent-banner) .auth-interactive-display {
+  padding-top: 56px;
+}
+
 :root {
   --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
