@@ -6,6 +6,37 @@
   <title>SSO Test App — DevilWolf</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    // Detecção imediata de file:// — antes de qualquer outra coisa
+    if (window.location.protocol === 'file:') {
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.innerHTML = `
+          <div style="font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+            <div style="max-width:520px;text-align:center;">
+              <div style="font-size:56px;margin-bottom:20px;">⚠️</div>
+              <h1 style="font-size:24px;font-weight:800;margin-bottom:12px;color:#f87171;">Não funciona com <code style="background:#1e1e2e;padding:2px 8px;border-radius:6px;font-size:20px;">file://</code></h1>
+              <p style="color:#94a3b8;line-height:1.7;margin-bottom:28px;">
+                O browser bloqueia redireccionamentos de <strong style="color:#e2e8f0;">https://</strong> para <strong style="color:#e2e8f0;">file://</strong> por razões de segurança.<br><br>
+                Precisas de servir esta página por <strong style="color:#a78bfa;">HTTP</strong>, mesmo que seja localmente.
+              </p>
+
+              <div style="background:#1e1e2e;border:1px solid #2d2d44;border-radius:14px;padding:24px;text-align:left;margin-bottom:24px;">
+                <p style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:14px;">✅ Opção 1 — Servidor local (Python)</p>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:10px;">Abre um terminal <strong style="color:#e2e8f0;">na pasta do projeto</strong> e corre:</p>
+                <code style="display:block;background:#0f0f1a;border:1px solid #2d2d44;border-radius:8px;padding:12px 16px;color:#4ade80;font-size:14px;">python -m http.server 8080</code>
+                <p style="color:#64748b;font-size:12px;margin-top:10px;">Depois abre: <a href="http://localhost:8080/sso-test.html" style="color:#a78bfa;">http://localhost:8080/sso-test.html</a></p>
+              </div>
+
+              <div style="background:#1e1e2e;border:1px solid #2d2d44;border-radius:14px;padding:24px;text-align:left;">
+                <p style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:14px;">🚀 Opção 2 — GitHub Pages (produção)</p>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:10px;">Faz commit do ficheiro para o teu repositório e abre:</p>
+                <code style="display:block;background:#0f0f1a;border:1px solid #2d2d44;border-radius:8px;padding:12px 16px;color:#60a5fa;font-size:13px;">https://devilwolfpt.github.io/Account-Services/sso-test.html</code>
+              </div>
+            </div>
+          </div>`;
+      });
+    }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
