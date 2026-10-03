@@ -49,6 +49,118 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- =========================================================================
+       SSO — ECRÃ DE AUTORIZAÇÃO (estilo Google)
+       Mostrado apenas quando ?redirect_to= está presente no URL
+       ========================================================================= -->
+  <div class="sso-auth-screen" id="ssoAuthScreen" style="display:none;">
+    <div class="sso-auth-card">
+
+      <!-- Cabeçalho: logo Account Services -->
+      <div class="sso-as-header">
+        <svg class="sso-as-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="10" fill="url(#ssoGrad)"/>
+          <defs>
+            <linearGradient id="ssoGrad" x1="0" y1="0" x2="40" y2="40">
+              <stop offset="0%" stop-color="#4f46e5"/>
+              <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+          <path d="M20 10c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 12c-5.33 0-10 2.67-10 5.33V29h20v-1.67C30 24.67 25.33 22 20 22z" fill="white"/>
+        </svg>
+        <span class="sso-as-name">Account Services</span>
+      </div>
+
+      <!-- App a pedir acesso -->
+      <div class="sso-app-block">
+        <div class="sso-app-icon" id="ssoAppIcon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#6366f1" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="sso-app-info">
+          <h1 class="sso-app-title">Iniciar sessão em<br><span id="ssoAppNameDisplay">App</span></h1>
+        </div>
+      </div>
+
+      <!-- Divider com seta -->
+      <div class="sso-arrow-row">
+        <div class="sso-arrow-line"></div>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9ca3af" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        <div class="sso-arrow-line"></div>
+      </div>
+
+      <!-- O que será partilhado -->
+      <p class="sso-share-title">A tua conta vai partilhar com <strong id="ssoShareAppName">App</strong>:</p>
+      <ul class="sso-permissions-list">
+        <li>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Nome e foto de perfil
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Endereço de e-mail
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Autenticação segura (sem partilha de palavra-passe)
+        </li>
+      </ul>
+
+      <!-- Botões sociais -->
+      <div class="sso-social-btns">
+        <button type="button" class="sso-btn-social sso-btn-google" id="ssoGoogleBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          Continuar com Google
+        </button>
+        <button type="button" class="sso-btn-social sso-btn-microsoft" id="ssoMicrosoftBtn">
+          <svg viewBox="0 0 21 21" width="16" height="16">
+            <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+            <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+            <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+          </svg>
+          Continuar com Microsoft
+        </button>
+      </div>
+
+      <!-- Separador -->
+      <div class="sso-divider"><span>ou</span></div>
+
+      <!-- Form email/password inline -->
+      <form class="sso-email-form" id="ssoEmailForm" autocomplete="off">
+        <div class="sso-input-group">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <input type="email" id="ssoEmail" placeholder="E-mail" required autocomplete="email">
+        </div>
+        <div class="sso-input-group">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#9ca3af" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <input type="password" id="ssoPassword" placeholder="Palavra-passe" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="sso-btn-continue">
+          Continuar
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <!-- Rodapé -->
+      <div class="sso-footer">
+        <button type="button" class="sso-btn-cancel" id="ssoCancelBtn">Cancelar</button>
+        <span class="sso-footer-sep">·</span>
+        <span class="sso-powered">Protegido por <strong>Account Services</strong></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
        1. MODO INTERATIVO (DESLIZANTE) - VISTO PELO UTILIZADOR COMUM
        ========================================================================= -->
   <main class="auth-interactive-display" id="interactiveDisplay">

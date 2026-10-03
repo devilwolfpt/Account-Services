@@ -50,6 +50,258 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   padding-top: 56px;
 }
 
+/* ==========================================================================
+   SSO — ECRÃ DE AUTORIZAÇÃO (estilo Google)
+   ========================================================================== */
+.sso-auth-screen {
+  min-height: 100vh;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: var(--font-family, 'Plus Jakarta Sans', system-ui, sans-serif);
+}
+
+.sso-auth-card {
+  background: #ffffff;
+  border-radius: 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
+  padding: 40px 40px 32px;
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Header — logo + nome */
+.sso-as-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.sso-as-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.sso-as-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+/* App block */
+.sso-app-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.sso-app-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #f0f0ff;
+  border: 1.5px solid #e0e0ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.sso-app-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+.sso-app-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.sso-app-title span {
+  color: #4f46e5;
+}
+
+/* Arrow row */
+.sso-arrow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  opacity: 0.4;
+}
+.sso-arrow-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+/* Permissions */
+.sso-share-title {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+.sso-share-title strong { color: #111827; }
+
+.sso-permissions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f9fafb;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.sso-permissions-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* Social buttons */
+.sso-social-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.sso-btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  font-family: inherit;
+  border: 1.5px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+}
+.sso-btn-social:hover {
+  background: #f9fafb;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+.sso-btn-social:active { transform: translateY(0); }
+
+/* Divider */
+.sso-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+.sso-divider::before,
+.sso-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #f0f0f0;
+}
+
+/* Email form */
+.sso-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.sso-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sso-input-group:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  background: #fff;
+}
+.sso-input-group svg { flex-shrink: 0; }
+.sso-input-group input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 13px 0;
+  font-size: 14px;
+  color: #111827;
+  font-family: inherit;
+  outline: none;
+}
+.sso-input-group input::placeholder { color: #9ca3af; }
+
+.sso-btn-continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+}
+.sso-btn-continue:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79,70,229,0.4);
+}
+.sso-btn-continue:active { transform: translateY(0); }
+
+/* Footer */
+.sso-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.sso-btn-cancel {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.sso-btn-cancel:hover { color: #111827; background: #f3f4f6; }
+.sso-footer-sep { color: #d1d5db; }
+.sso-powered { font-size: 12px; color: #9ca3af; }
+.sso-powered strong { color: #6b7280; }
+
 :root {
   --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   

@@ -78,34 +78,72 @@ window.AccountServicesSSO = {
 document.addEventListener('DOMContentLoaded', () => {
 
   /* ==========================================================================
-     SSO — LEITURA DE PARÂMETROS E RETOMA DE SESSÃO
+     SSO — LEITURA DE PARÂMETROS E ECRÃ DE AUTORIZAÇÃO
      ========================================================================== */
   const ssoParams = new URLSearchParams(window.location.search);
-  const ssoRedirectTo = ssoParams.get('redirect_to');    // URL de retorno
-  const ssoAppName   = ssoParams.get('app_name') || '';  // Nome da app
-  const ssoAppLogo   = ssoParams.get('app_logo') || '';  // Logo da app (URL)
+  const ssoRedirectTo = ssoParams.get('redirect_to');
+  const ssoAppName   = ssoParams.get('app_name') || '';
+  const ssoAppLogo   = ssoParams.get('app_logo') || '';
 
-  // Mostra banner de consentimento se vier de uma app externa
-  if (ssoRedirectTo) {
-    const banner = document.createElement('div');
-    banner.id = 'sso-consent-banner';
-    banner.innerHTML = `
-      <div class="sso-banner-inner">
-        ${ssoAppLogo ? `<img src="${ssoAppLogo}" class="sso-app-logo" alt="${ssoAppName}">` : ''}
-        <div class="sso-banner-text">
-          <strong>${ssoAppName || 'Uma aplicação'}</strong> está a pedir acesso à tua conta.
-          <span>Inicia sessão para continuar.</span>
-        </div>
-      </div>`;
-    document.body.insertBefore(banner, document.body.firstChild);
-  }
+  const ssoAuthScreen     = document.getElementById('ssoAuthScreen');
+  const interactiveDisplay = document.getElementById('interactiveDisplay');
+  const sideBySideDisplay  = document.getElementById('sideBySideDisplay');
 
   // Retoma sessão automática se já estiver autenticado
   const existingSession = getSession();
   if (existingSession && ssoRedirectTo) {
     const token = localStorage.getItem(SSO_SESSION_KEY);
     redirectToApp(ssoRedirectTo, token, existingSession);
-    return; // Não renderiza a página de login
+    return;
+  }
+
+  // Se veio de uma app externa — mostra o ecrã SSO estilo Google
+  if (ssoRedirectTo && ssoAuthScreen) {
+    // Oculta UI principal
+    if (interactiveDisplay) interactiveDisplay.style.display = 'none';
+    if (sideBySideDisplay)  sideBySideDisplay.style.display  = 'none';
+
+    // Mostra ecrã SSO
+    ssoAuthScreen.style.display = 'flex';
+
+    // Preenche nome da app
+    const nameEl1 = document.getElementById('ssoAppNameDisplay');
+    const nameEl2 = document.getElementById('ssoShareAppName');
+    if (nameEl1) nameEl1.textContent = ssoAppName || 'Aplicação';
+    if (nameEl2) nameEl2.textContent = ssoAppName || 'Aplicação';
+
+    // Logo da app
+    if (ssoAppLogo) {
+      const iconEl = document.getElementById('ssoAppIcon');
+      if (iconEl) iconEl.innerHTML = `<img src="${ssoAppLogo}" alt="${ssoAppName}">`;
+    }
+
+    // Cancelar — volta à app sem token
+    const cancelBtn = document.getElementById('ssoCancelBtn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        window.history.back();
+      });
+    }
+
+    // Form email/password SSO
+    const ssoEmailForm = document.getElementById('ssoEmailForm');
+    if (ssoEmailForm) {
+      ssoEmailForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email    = document.getElementById('ssoEmail').value.trim();
+        const password = document.getElementById('ssoPassword').value;
+        handleLoginAction(email, password);
+      });
+    }
+
+    // Botão Google SSO
+    const ssoGoogleBtn = document.getElementById('ssoGoogleBtn');
+    if (ssoGoogleBtn) ssoGoogleBtn.addEventListener('click', () => triggerGoogleSignIn());
+
+    // Botão Microsoft SSO
+    const ssoMicrosoftBtn = document.getElementById('ssoMicrosoftBtn');
+    if (ssoMicrosoftBtn) ssoMicrosoftBtn.addEventListener('click', () => triggerMicrosoftSignIn());
   }
 
   // DOM Elements - Modo Desenvolvedor
@@ -113,9 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnDevSideBySide = document.getElementById('btnDevSideBySide');
   const btnDevInteractive = document.getElementById('btnDevInteractive');
   const btnDevClose = document.getElementById('btnDevClose');
-
-  const interactiveDisplay = document.getElementById('interactiveDisplay');
-  const sideBySideDisplay = document.getElementById('sideBySideDisplay');
 
   // DOM Elements - Modo Interativo Deslizante
   const authCard = document.getElementById('authCard');
