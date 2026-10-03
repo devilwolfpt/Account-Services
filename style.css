@@ -1,0 +1,1054 @@
+/* ==========================================================================
+   ACCOUNT SERVICES - AUTENTICAÇÃO
+   RÉPLICA 1:1 PIXEL-PERFECT DO DESIGN ORIGINAL
+   ========================================================================== */
+
+:root {
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Cores Exatas da Imagem */
+  --page-bg: #edf1f6;
+  --card-bg: #ffffff;
+  
+  /* Gradiente Azul-Marinho Profundo do Painel Escuro */
+  --dark-navy-top: #020919;
+  --dark-navy-bot: #041029;
+  
+  /* Inputs */
+  --input-bg: #edf3f8;
+  --input-icon-color: #4b5b6d;
+  --input-text-color: #0c1523;
+  --input-placeholder: #8796a6;
+  
+  /* Destaques Tipográficos */
+  --highlight-blue: #0084ff;
+  --highlight-cyan: #0084ff;
+  --highlight-purple: #6f3df7;
+  --testimonial-bg: #5e1ee5;
+  
+  /* Botões */
+  --btn-main-gradient: linear-gradient(90deg, #0080ff 0%, #6b2cf5 100%);
+  --btn-glow-border: #0099ff;
+  
+  /* Proporções Exatas da Imagem: 44% Escuro / 56% Claro */
+  --dark-width: 44%;
+  --form-width: 56%;
+  
+  /* Dimensões do Cartão - Compacto e Elegante */
+  --radius-card: 22px;
+  --radius-input: 13px;
+  --radius-pill: 9999px;
+  --radius-box: 16px;
+  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--page-bg);
+  color: #0c1523;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   BARRA DE DESENVOLVEDOR (ATIVADA SOMENTE VIA BOOKMARKLET)
+   ========================================================================== */
+.dev-nav-bar {
+  width: 100%;
+  max-width: 1140px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  z-index: 1000;
+  animation: fadeInDown 0.3s ease forwards;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dev-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.dev-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.dev-badge {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.dev-view-switch {
+  display: flex;
+  background: #edf2f7;
+  padding: 3px;
+  border-radius: 999px;
+  gap: 4px;
+}
+
+.dev-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dev-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dev-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #94a3b8;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.dev-close-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+/* ==========================================================================
+   1. MODO INTERATIVO (DESLIZANTE) - VISTO PELO UTILIZADOR COMUM
+   ========================================================================== */
+.auth-interactive-display {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+.auth-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  box-shadow: 0 20px 50px -10px rgba(12, 28, 56, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 505px;
+  display: flex;
+}
+
+.forms-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.form-panel {
+  position: absolute;
+  top: 0;
+  width: var(--form-width);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 44px;
+  background: var(--card-bg);
+  transition: all 0.6s var(--ease-smooth);
+}
+
+.panel-content {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+
+/* Login Panel (À esquerda por defeito) */
+.login-panel {
+  left: 0;
+  z-index: 2;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+/* Register Panel (À direita quando ativo) */
+.register-panel {
+  left: var(--dark-width);
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(20px);
+}
+
+.auth-card.right-panel-active .login-panel {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-20px);
+  z-index: 1;
+}
+
+.auth-card.right-panel-active .register-panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  z-index: 5;
+}
+
+/* Overlay Deslizante (Lado Escuro - 44% Largura, Junção 100% Reta) */
+.overlay-container {
+  position: absolute;
+  top: 0;
+  left: var(--form-width);
+  width: var(--dark-width);
+  height: 100%;
+  overflow: hidden;
+  transition: all 0.6s var(--ease-smooth);
+  z-index: 100;
+}
+
+.auth-card.right-panel-active .overlay-container {
+  transform: translateX(calc(-100% * (56 / 44)));
+}
+
+.overlay {
+  background: linear-gradient(175deg, var(--dark-navy-top) 0%, var(--dark-navy-bot) 100%);
+  color: #ffffff;
+  position: relative;
+  left: -100%;
+  height: 100%;
+  width: 200%;
+  transform: translateX(0);
+  transition: all 0.6s var(--ease-smooth);
+}
+
+.auth-card.right-panel-active .overlay {
+  transform: translateX(50%);
+}
+
+.overlay-panel {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 30px 32px;
+  overflow: hidden;
+  transition: all 0.6s var(--ease-smooth);
+}
+
+.overlay-left {
+  left: 0;
+  transform: translateX(-15%);
+}
+
+.auth-card.right-panel-active .overlay-left {
+  transform: translateX(0);
+}
+
+.overlay-right {
+  right: 0;
+  transform: translateX(0);
+}
+
+.auth-card.right-panel-active .overlay-right {
+  transform: translateX(15%);
+}
+
+/* ==========================================================================
+   2. VISTA LADO A LADO (MODO DESENVOLVEDOR - EXATO AO DESIGN)
+   ========================================================================== */
+.side-by-side-display {
+  width: 100%;
+  max-width: 1140px;
+  display: flex;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
+}
+
+.auth-card-mockup {
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  box-shadow: 0 18px 45px -10px rgba(12, 28, 56, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  display: flex;
+  overflow: hidden;
+  height: 505px;
+  width: 100%;
+  position: relative;
+}
+
+.mockup-panel.dark-panel {
+  flex: 0 0 var(--dark-width);
+  width: var(--dark-width);
+  background: linear-gradient(175deg, var(--dark-navy-top) 0%, var(--dark-navy-bot) 100%);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 30px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mockup-panel.light-panel {
+  flex: 0 0 var(--form-width);
+  width: var(--form-width);
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 28px 44px;
+  position: relative;
+}
+
+.panel-inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* No painel 'Bem-vindo de volta!', o bloco de boas-vindas fica ao meio e o popup roxo fica em baixo */
+.overlay-left .panel-content,
+.card-register-flow .dark-panel .panel-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.welcome-mid-block {
+  margin-top: auto;
+  margin-bottom: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-left .testimonial-box,
+.card-register-flow .dark-panel .testimonial-box {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.overlay-left .testimonial-dots,
+.card-register-flow .dark-panel .testimonial-dots {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.panel-inner.center-content,
+.overlay-panel.overlay-right .panel-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+}
+
+.form-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ==========================================================================
+   TIPOGRAFIA & CORES RIGOROSAS (FIDELIDADE 1:1)
+   ========================================================================== */
+
+/* Títulos do Painel Escuro */
+.hero-title {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+
+.overlay-right .hero-title,
+.panel-inner.center-content .hero-title {
+  font-size: 2.25rem;
+  margin-bottom: 12px;
+}
+
+.highlight-cyan {
+  color: var(--highlight-cyan);
+}
+
+.highlight-purple {
+  color: var(--highlight-purple);
+}
+
+.hero-subtitle {
+  font-size: 0.76rem;
+  color: #9cb1c9;
+  line-height: 1.45;
+  margin-bottom: 18px;
+  max-width: 220px;
+  font-weight: 400;
+}
+
+.overlay-right .hero-subtitle,
+.panel-inner.center-content .hero-subtitle {
+  text-align: center;
+  max-width: 240px;
+  margin-bottom: 24px;
+}
+
+/* Títulos dos Formulários Claros */
+.form-title, .card-form-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #0c1523;
+  margin-bottom: 16px;
+}
+
+/* Centralizar título em 'Iniciar sessão' */
+.login-panel .form-title,
+.card-login-flow .card-form-title {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+/* Botão com Contorno Néon (FAZER LOGIN -> e CRIAR CONTA ->) */
+.btn-glow-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #030f25;
+  color: #ffffff;
+  border: 1.5px solid var(--btn-glow-border);
+  border-radius: var(--radius-pill);
+  padding: 9.5px 22px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(0, 153, 255, 0.4);
+  transition: all 0.22s ease;
+  width: fit-content;
+  font-family: inherit;
+  margin-bottom: 20px;
+}
+
+.overlay-right .btn-glow-pill,
+.panel-inner.center-content .btn-glow-pill {
+  margin-bottom: 0;
+}
+
+.btn-glow-pill:hover {
+  background: #06183d;
+  box-shadow: 0 0 24px rgba(0, 153, 255, 0.65);
+  transform: translateY(-1px);
+}
+
+/* Caixa de Testemunho Roxo de James Anderson */
+.testimonial-box {
+  background: var(--testimonial-bg);
+  border-radius: var(--radius-box);
+  padding: 13px 15px;
+  box-shadow: 0 10px 22px -5px rgba(94, 30, 229, 0.45);
+  position: relative;
+  width: 100%;
+}
+
+.testimonial-text {
+  font-size: 0.71rem;
+  color: #ffffff;
+  line-height: 1.4;
+  font-weight: 400;
+  margin-bottom: 10px;
+}
+
+.author-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.author-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.author-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.author-job {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 3 Pontos abaixo do testemunho */
+.testimonial-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.testimonial-dots .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.testimonial-dots .dot.active {
+  width: 13px;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+/* Iluminação Néon Difusa */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.purple-glow-bottom {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, #6322ea 0%, rgba(99, 34, 234, 0) 75%);
+  bottom: -30px;
+  left: -20px;
+  opacity: 0.65;
+}
+
+.purple-blue-glow-bottom {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, #6f25ea 0%, #1555eb 45%, transparent 75%);
+  bottom: -40px;
+  right: -25px;
+  opacity: 0.75;
+}
+
+/* ==========================================================================
+   STEPPER DE 4 PASSOS (1, 2, 3, 4 SEM LINHAS CONFORME O DESIGN)
+   ========================================================================= */
+.stepper-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.step-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.step-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--input-bg);
+  color: #1a2636;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.step-col.active .step-badge {
+  background: var(--highlight-blue);
+  color: #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 132, 255, 0.35);
+}
+
+.step-caption {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #8796a6;
+}
+
+.step-col.active .step-caption {
+  color: #0c1523;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   BOTÕES SOCIAIS & DIVISOR (INICIAR SESSÃO - COMPACTO E CENTRADO)
+   ========================================================================= */
+.social-group, .social-circles-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.btn-social, .social-round-btn {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: var(--input-bg);
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a2636;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-social:hover, .social-round-btn:hover {
+  background: #dde7f0;
+  color: var(--highlight-blue);
+  transform: translateY(-1px);
+}
+
+.btn-social.btn-google, .social-round-btn.btn-google {
+  background: #ffffff;
+  border: 1px solid #e1e7ee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.btn-social.btn-google:hover, .social-round-btn.btn-google:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.btn-social.btn-microsoft, .social-round-btn.btn-microsoft {
+  background: #ffffff;
+  border: 1px solid #e1e7ee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.btn-social.btn-microsoft:hover, .social-round-btn.btn-microsoft:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.divider, .clean-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.divider::before, .divider::after,
+.clean-divider::before, .clean-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e5ecf3;
+}
+
+.divider span, .clean-divider span {
+  padding: 0 10px;
+  font-size: 0.7rem;
+  color: #8a98a8;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   INPUTS & CAMPOS DE TEXTO
+   ========================================================================= */
+.auth-form, .clean-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.inputs-stack, .form-inputs-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.input-box, .custom-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--input-icon-color);
+  pointer-events: none;
+}
+
+.input-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.input-box input, .custom-input-box input {
+  width: 100%;
+  height: 46px;
+  background: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-input);
+  padding: 0 40px 0 44px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--input-text-color);
+  transition: all 0.2s ease;
+}
+
+.input-box input::placeholder, .custom-input-box input::placeholder {
+  color: var(--input-placeholder);
+  font-weight: 400;
+}
+
+.input-box input:focus, .custom-input-box input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #bcd5f5;
+  box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.12);
+}
+
+.btn-toggle-eye {
+  position: absolute;
+  right: 13px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--input-icon-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.btn-toggle-eye svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Links Abaixo dos Inputs (Alinhados à Direita como na Imagem) */
+.switch-helper-text {
+  text-align: right;
+  font-size: 0.7rem;
+  color: #718294;
+  margin: 8px 0 14px 0;
+}
+
+.link-action {
+  color: var(--highlight-blue);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link-action:hover {
+  text-decoration: underline;
+}
+
+.forgot-wrapper {
+  text-align: right;
+  margin: 6px 0 16px 0;
+}
+
+.forgot-link, .forgot-pwd-link {
+  font-size: 0.7rem;
+  color: var(--highlight-cyan);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forgot-link:hover, .forgot-pwd-link:hover {
+  text-decoration: underline;
+}
+
+/* Botão Gradiente Principal: SEGUINTE -> / INICIAR SESSÃO -> */
+.btn-submit-container, .btn-submit-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.btn-gradient-submit, .btn-gradient-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--btn-main-gradient);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 11px 34px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 128, 255, 0.42);
+  transition: all 0.22s ease;
+  font-family: inherit;
+}
+
+.btn-gradient-submit:hover, .btn-gradient-pill:hover {
+  box-shadow: 0 12px 26px rgba(0, 128, 255, 0.55);
+  transform: translateY(-1.5px);
+}
+
+.arrow-icon, .arrow-sym {
+  font-size: 0.92rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.btn-gradient-submit:hover .arrow-icon,
+.btn-glow-pill:hover .arrow-icon,
+.btn-gradient-pill:hover .arrow-sym,
+.btn-glow-pill:hover .arrow-sym {
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   TOAST & MODAL
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  min-width: 280px;
+  padding: 12px 18px;
+  background: #111a28;
+  color: #ffffff;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  animation: slideIn 0.25s ease;
+  border-left: 4px solid var(--highlight-blue);
+}
+
+.toast.toast-success { border-left-color: #10b981; }
+.toast.toast-error { border-left-color: #ef4444; }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.session-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 10, 24, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.session-modal-overlay.active { display: flex; }
+
+.session-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 34px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  animation: popScale 0.25s ease;
+}
+
+.modal-badge-success {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #ecfdf5;
+  color: #059669;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.modal-user-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--btn-main-gradient);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 auto 14px auto;
+  box-shadow: 0 8px 18px rgba(0, 128, 255, 0.3);
+}
+
+.session-modal-card h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0c1523;
+}
+
+.session-modal-card p {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.modal-info-box {
+  margin: 18px 0;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+@keyframes popScale {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .showcase-grid {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-card {
+    height: auto;
+    min-height: 480px;
+  }
+
+  .forms-wrapper {
+    position: relative;
+    height: auto;
+  }
+
+  .form-panel {
+    position: relative;
+    width: 100%;
+    left: 0 !important;
+    padding: 30px 20px;
+    height: auto;
+  }
+
+  .overlay-container {
+    display: none;
+  }
+
+  .register-panel {
+    display: none;
+  }
+
+  .auth-card.right-panel-active .login-panel {
+    display: none;
+  }
+
+  .auth-card.right-panel-active .register-panel {
+    display: flex;
+  }
+}
