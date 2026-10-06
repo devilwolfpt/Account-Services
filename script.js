@@ -237,6 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const stepperBars = document.querySelectorAll('.stepper-bar');
   let currentStep = 1;
   const totalSteps = 4;
+  // Dados guardados em memória por passo (evita problema de inputs ocultos)
+  let _savedRegData = { firstName: '', lastName: '', birth: '', gender: '', username: '' };
 
   /* ==========================================================================
      1. CONTROLE DO MODO DESENVOLVEDOR (ATIVADO VIA BOOKMARKLET)
@@ -351,6 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function setRegisterStep(step) {
     if (step < 1 || step > totalSteps) return;
     currentStep = step;
+    // Limpar dados guardados se voltar ao início
+    if (step === 1) _savedRegData = { firstName: '', lastName: '', birth: '', gender: '', username: '' };
 
     // Atualiza badges em todas as barras de passos
     stepperBars.forEach(bar => {
@@ -561,7 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
           await docRef.set(firestorePayload, { merge: true });
           console.log('✅ Utilizador completo sincronizado na Nuvem Google Firestore:', normalizedEmail, firestorePayload);
         } catch (err) {
-          console.warn('Erro ao sincronizar com Google Firestore (armazenado no cofre local):', err);
+          console.error('❌ Erro ao sincronizar com Google Firestore:', err.code || '', err.message || err);
+          console.warn('💡 Verifique: (1) Regras do Firestore permitem escrita, (2) não está a usar file://, (3) credenciais corretas.');
         }
       }
 
@@ -755,6 +760,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lastNameEl) lastNameEl.focus();
         return;
       }
+      // Guardar em memória antes de avançar
+      _savedRegData.firstName = fName;
+      _savedRegData.lastName = lName;
       setRegisterStep(2);
       showToast('Dados guardados. Passo 2: Informações Pessoais.', 'info');
       return;
@@ -774,6 +782,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (genderEl) genderEl.focus();
         return;
       }
+      // Guardar em memória antes de avançar (pane ficará oculto)
+      _savedRegData.birth = birth;
+      _savedRegData.gender = gender;
+      console.log('📋 Dados pessoais guardados em memória:', { birth, gender });
       setRegisterStep(3);
       showToast('Informações registadas. Passo 3: Escolha o seu endereço @nai.com.', 'info');
       return;
@@ -803,6 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Guardar em memória antes de avançar
+      _savedRegData.username = username;
       setRegisterStep(4);
       showToast(`Endereço ${officialEmail} disponível! Passo 4: Defina a sua palavra-passe.`, 'success');
       return;
@@ -825,14 +839,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Reúne todos os dados validados dos 4 passos
-      const fName = firstNameEl ? firstNameEl.value.trim() : 'Utilizador';
-      const lName = lastNameEl ? lastNameEl.value.trim() : '';
+      // Usar dados guardados em memória nos passos anteriores (100% fiável)
+      const fName    = _savedRegData.firstName || (firstNameEl ? firstNameEl.value.trim() : 'Utilizador');
+      const lName    = _savedRegData.lastName  || (lastNameEl  ? lastNameEl.value.trim()  : '');
+      const birth    = _savedRegData.birth     || (birthEl     ? birthEl.value            : '');
+      const gender   = _savedRegData.gender    || (genderEl    ? genderEl.value           : '');
+      const username = _savedRegData.username  || (emailEl     ? emailEl.value.trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '') : '');
+
       const fullName = `${fName} ${lName}`.trim();
-      const birth = birthEl ? birthEl.value : '';
-      const gender = genderEl ? genderEl.value : '';
-      let username = emailEl ? emailEl.value.trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '') : '';
       const officialEmail = `${username}@nai.com`;
+
+      console.log('🚀 Criar conta — dados completos:', { fName, lName, birth, gender, username, officialEmail });
 
       const genderMap = { 'M': 'Masculino', 'F': 'Feminino', 'O': 'Personalizado', 'N': 'Prefiro não dizer' };
       const passHash = await hashPassword(pass);
@@ -852,6 +869,10 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       await NaiDB.saveUser(newUser);
+
+      // Limpar dados temporários após criação bem-sucedida
+      _savedRegData = { firstName: '', lastName: '', birth: '', gender: '', username: '' };
+
       showToast(`Conta criada com sucesso! Bem-vindo, ${fName}! O seu e-mail é ${officialEmail}`, 'success');
 
       window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
