@@ -1,634 +1,399 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Autenticação | Iniciar Sessão & Criar Conta</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <!-- Google Identity Services SDK -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <!-- Microsoft Authentication Library (MSAL.js) -->
-  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" async defer></script>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NTS · Nai Tnuocca Secivres</title>
+<style>
+  :root {
+    --bg-center: #05214f;
+    --bg-edge: #010a1f;
+    --edge-light: #a9d4ff;
+    --text-dim: #8fb2e6;
+    --blue: #0a8dff;
+    --violet: #7b2ff7;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 108%, rgba(123, 47, 247, .45), transparent 70%),
+      radial-gradient(ellipse 45% 30% at 18% 100%, rgba(10, 141, 255, .30), transparent 70%),
+      radial-gradient(ellipse at 50% 42%, var(--bg-center) 0%, var(--bg-edge) 75%);
+    font-family: "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 900;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1000px;
+    height: 420px;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+  }
+
+  .glow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 720px;
+    height: 320px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(10, 141, 255, .22), rgba(123, 47, 247, .08) 60%, transparent);
+    filter: blur(10px);
+    pointer-events: none;
+  }
+
+  /* ---------- Linha do logótipo ---------- */
+  .logo {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 280px;
+    line-height: 1;
+    gap: 0;
+    white-space: nowrap;
+    perspective: 1400px;
+  }
+
+  .word {
+    display: flex;
+    align-items: center;
+  }
+
+  /* ---------- Texto metálico com extrusão ---------- */
+  .m {
+    position: relative;
+    display: inline-block;
+    padding-right: .04em;
+    color: #050d22;
+    -webkit-text-stroke: .028em var(--edge-light);
+    text-shadow:
+      .012em .012em 0 #1b3d78,
+      .024em .024em 0 #173368,
+      .036em .036em 0 #122a58,
+      .048em .048em 0 #0e2249,
+      .060em .060em 0 #0a1a3a,
+      .075em .095em .06em rgba(0, 4, 20, .6),
+      0 0 .25em rgba(10, 141, 255, .45);
+  }
+
+  .m::after {
+    content: attr(data-t);
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding-right: .04em;
+    color: transparent;
+    -webkit-text-stroke: .028em var(--edge-light);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: none;
+  }
+
+  /* alumínio escovado cinzento escuro + brilho que passa */
+  .m::after,
+  .cap.inner,
+  .side {
+    background:
+      linear-gradient(105deg, transparent 42%, rgba(190, 225, 255, .6) 50%, transparent 58%) no-repeat,
+      repeating-linear-gradient(0deg, rgba(190, 225, 255, .09) 0 1px, rgba(0, 5, 25, .16) 1px 2px),
+      linear-gradient(120deg, #0b1a3a 0%, #2d5496 22%, #12275a 38%, #4f82d6 52%, #10224d 68%, #2a4b8f 84%, #0b1a3a 100%);
+    background-size: 60% 100%, auto, 100% 100%;
+    background-position: -150% 0, 0 0, 0 0;
+    animation: glint 2.8s ease-in-out infinite;
+  }
+  .m::after {
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+
+  @keyframes glint {
+    0%   { background-position: -150% 0, 0 0, 0 0; }
+    60%  { background-position: 250% 0, 0 0, 0 0; }
+    100% { background-position: 250% 0, 0 0, 0 0; }
+  }
+
+  /* estados iniciais (a animar por JS) */
+  .head.side-n, .head.side-s { width: 0; opacity: 0; }
+  .rest {
+    width: 0;
+    opacity: 0;
+    clip-path: inset(-.4em 0 -.4em 0);
+  }
+
+  /* ---------- T em 3D ---------- */
+  .tslot {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    flex: none;
+  }
+  .tscale {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    transform: scale(1);
+    perspective: 900px;
+    opacity: 0;
+    filter: drop-shadow(0 0 18px rgba(10, 141, 255, .4));
+  }
+  .enter, .sway, .spin {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+  }
+  .enter { transform: scale(.55); }
+  .sway { animation: sway 4.5s ease-in-out infinite alternate; }
+  .spin { transform: rotateZ(-90deg); }
+
+  @keyframes sway {
+    from { transform: rotateX(16deg) rotateY(-30deg); }
+    to   { transform: rotateX(9deg)  rotateY(12deg); }
+  }
+
+  .cap {
+    position: absolute;
+    left: -100px;
+    top: -100px;
+    width: 200px;
+    height: 200px;
+    backface-visibility: hidden;
+  }
+  .cap.outer {
+    background: linear-gradient(135deg, #d4eaff 0%, #5f94d6 50%, #b5d8ff 100%);
+  }
+  .side {
+    position: absolute;
+    border-top: 2px solid #7fb2ee;
+    border-bottom: 2px solid #7fb2ee;
+  }
+
+  /* ---------- Assinatura ---------- */
+  .credit {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    text-align: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    letter-spacing: .14em;
+    color: var(--text-dim);
+    opacity: 0;
+  }
+
+  #meas {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    visibility: hidden;
+    font-size: 100px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sway, .m::after, .cap.inner, .side { animation: none; }
+  }
+</style>
 </head>
-<body class="mode-user-production">
+<body>
 
-  <!-- =========================================================================
-       BARRA DE DESENVOLVEDOR (ATIVADA SOMENTE VIA BOOKMARKLET)
-       ========================================================================= -->
-  <header class="dev-nav-bar" id="devNavBar" style="display: none;">
-    <div class="dev-brand">
-      <span class="dev-status-dot"></span>
-      <strong>Account Services</strong>
-      <span class="dev-badge">Modo Desenvolvedor</span>
-    </div>
-    <div class="dev-view-switch">
-      <button type="button" class="dev-btn" id="btnDevSideBySide" title="Ver exatamente os dois cartões como na imagem">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="4" width="9" height="16" rx="2"></rect>
-          <rect x="13" y="4" width="9" height="16" rx="2"></rect>
-        </svg>
-        <span>Vista Lado a Lado (Design)</span>
-      </button>
-      <button type="button" class="dev-btn active" id="btnDevInteractive" title="Cartão interativo deslizante de produção">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 2l4 4-4 4"></path>
-          <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
-          <path d="M7 22l-4-4 4-4"></path>
-          <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
-        </svg>
-        <span>Modo Interativo (Deslizante)</span>
-      </button>
-    </div>
-    <button type="button" class="dev-close-btn" id="btnDevClose" title="Sair do modo desenvolvedor">✕</button>
-  </header>
+<div class="stage" id="stage">
+  <div class="glow"></div>
 
-  <!-- Toast Notification Container -->
-  <div id="toastContainer" class="toast-container"></div>
-
-  <!-- =========================================================================
-       SSO — ECRÃ DE AUTORIZAÇÃO (estilo Google)
-       Mostrado apenas quando ?redirect_to= está presente no URL
-       ========================================================================= -->
-  <div class="sso-auth-screen" id="ssoAuthScreen" style="display:none;">
-    <div class="sso-auth-card">
-
-      <!-- Cabeçalho: logo Account Services -->
-      <div class="sso-as-header">
-        <svg class="sso-as-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="40" height="40" rx="10" fill="url(#ssoGrad)"/>
-          <defs>
-            <linearGradient id="ssoGrad" x1="0" y1="0" x2="40" y2="40">
-              <stop offset="0%" stop-color="#4f46e5"/>
-              <stop offset="100%" stop-color="#7c3aed"/>
-            </linearGradient>
-          </defs>
-          <path d="M20 10c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 12c-5.33 0-10 2.67-10 5.33V29h20v-1.67C30 24.67 25.33 22 20 22z" fill="white"/>
-        </svg>
-        <span class="sso-as-name">Account Services</span>
-      </div>
-
-      <!-- App a pedir acesso -->
-      <div class="sso-app-block">
-        <div class="sso-app-icon" id="ssoAppIcon">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#6366f1" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="4"/>
-            <path d="M9 12l2 2 4-4"/>
-          </svg>
-        </div>
-        <div class="sso-app-info">
-          <h1 class="sso-app-title">Iniciar sessão em<br><span id="ssoAppNameDisplay">App</span></h1>
-        </div>
-      </div>
-
-      <!-- Divider com seta -->
-      <div class="sso-arrow-row">
-        <div class="sso-arrow-line"></div>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9ca3af" stroke-width="2">
-          <path d="M5 12h14M12 5l7 7-7 7"/>
-        </svg>
-        <div class="sso-arrow-line"></div>
-      </div>
-
-      <!-- O que será partilhado -->
-      <p class="sso-share-title">A tua conta vai partilhar com <strong id="ssoShareAppName">App</strong>:</p>
-      <ul class="sso-permissions-list">
-        <li>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-          Nome e foto de perfil
-        </li>
-        <li>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-          Endereço de e-mail
-        </li>
-        <li>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-          Autenticação segura (sem partilha de palavra-passe)
-        </li>
-      </ul>
-
-      <!-- Botões sociais -->
-      <div class="sso-social-btns">
-        <button type="button" class="sso-btn-social sso-btn-google" id="ssoGoogleBtn">
-          <svg viewBox="0 0 24 24" width="18" height="18">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-          </svg>
-          Continuar com Google
-        </button>
-        <button type="button" class="sso-btn-social sso-btn-microsoft" id="ssoMicrosoftBtn">
-          <svg viewBox="0 0 21 21" width="16" height="16">
-            <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-            <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-            <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-            <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-          </svg>
-          Continuar com Microsoft
-        </button>
-      </div>
-
-      <!-- Separador -->
-      <div class="sso-divider"><span>ou</span></div>
-
-      <!-- Form email/password inline -->
-      <form class="sso-email-form" id="ssoEmailForm" autocomplete="off">
-        <div class="sso-input-group">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          <input type="email" id="ssoEmail" placeholder="E-mail" required autocomplete="email">
-        </div>
-        <div class="sso-input-group">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#9ca3af" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <input type="password" id="ssoPassword" placeholder="Palavra-passe" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="sso-btn-continue">
-          Continuar
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-      </form>
-
-      <!-- Rodapé -->
-      <div class="sso-footer">
-        <button type="button" class="sso-btn-cancel" id="ssoCancelBtn">Cancelar</button>
-        <span class="sso-footer-sep">·</span>
-        <span class="sso-powered">Protegido por <strong>Account Services</strong></span>
-      </div>
-
-    </div>
+  <div class="logo" id="logo">
+    <span class="word" id="w1">
+      <span class="m head side-n" id="h1" data-t="N">N</span><span class="m rest" id="r1" data-t="ai">ai</span>
+    </span>
+    <span class="word" id="w2">
+      <span class="tslot" id="tslot">
+        <span class="tscale" id="tscale">
+          <span class="enter" id="enter"><span class="sway"><span class="spin" id="spin"></span></span></span>
+        </span>
+      </span><span class="m rest" id="r2" data-t="nuocca">nuocca</span>
+    </span>
+    <span class="word" id="w3">
+      <span class="m head side-s" id="h3" data-t="S">S</span><span class="m rest" id="r3" data-t="ecivres">ecivres</span>
+    </span>
   </div>
 
-  <!-- =========================================================================
-       1. MODO INTERATIVO (DESLIZANTE) - VISTO PELO UTILIZADOR COMUM
-       ========================================================================= -->
-  <main class="auth-interactive-display" id="interactiveDisplay">
-    <div class="auth-card" id="authCard">
+  <div class="credit" id="credit">NTS | By Ian Longo</div>
+</div>
 
-      <!-- FORMS (LADO BRANCO) -->
-      <div class="forms-wrapper">
+<span class="m" id="meas">x</span>
 
-        <!-- Form: Iniciar Sessão -->
-        <div class="form-panel login-panel" id="sliderLoginPanel">
-          <div class="panel-content">
-            <h2 class="form-title">Iniciar sessão</h2>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), logo = $('logo'), spin = $('spin'),
+        enter = $('enter'), tscale = $('tscale'), tslot = $('tslot'),
+        h1 = $('h1'), h3 = $('h3'), r1 = $('r1'), r2 = $('r2'), r3 = $('r3'),
+        w1 = $('w1'), w2 = $('w2'), w3 = $('w3'), credit = $('credit'), meas = $('meas');
 
-            <!-- Botões Sociais com Google e Microsoft Integrados -->
-            <div class="social-group">
-              <button type="button" class="btn-social" title="Facebook">f</button>
-              <button type="button" class="btn-social btn-google" id="btnGoogleLoginSlider" title="Entrar com o Google">
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-              </button>
-              <button type="button" class="btn-social btn-microsoft" id="btnMicrosoftLoginSlider" title="Entrar com a Microsoft">
-                <svg viewBox="0 0 21 21" width="16" height="16">
-                  <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-                  <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-                  <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-                </svg>
-              </button>
-              <button type="button" class="btn-social" title="LinkedIn">in</button>
-            </div>
+  /* ---------- ajustar ao ecrã ---------- */
+  function fit() {
+    const s = Math.min(innerWidth / 1000, innerHeight / 520, 1.15);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  addEventListener('resize', fit);
+  fit();
 
-            <!-- Divisor 'ou' -->
-            <div class="divider">
-              <span>ou</span>
-            </div>
+  /* ---------- construir o T em 3D (extrusão) ---------- */
+  const D = 44; // profundidade
+  const P  = [[0,0],[200,0],[200,56],[128,56],[128,200],[72,200],[72,56],[0,56]];
+  const IN = [[6,6],[194,6],[194,50],[122,50],[122,194],[78,194],[78,50],[6,50]];
+  const poly = a => 'polygon(' + a.map(p => p[0] + 'px ' + p[1] + 'px').join(',') + ')';
 
-            <form id="sliderLoginForm" class="auth-form" novalidate>
-              <div class="inputs-stack">
-                <div class="input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                    </svg>
-                  </span>
-                  <input type="email" id="sliderLogEmail" placeholder="E-mail" value="demo@exemplo.com" required autocomplete="email">
-                </div>
+  function cap(cls, pts, z, back) {
+    const e = document.createElement('span');
+    e.className = 'cap ' + cls;
+    e.style.clipPath = poly(pts);
+    e.style.webkitClipPath = poly(pts);
+    e.style.transform = back ? `rotateY(180deg) translateZ(${z}px)` : `translateZ(${z}px)`;
+    spin.appendChild(e);
+  }
+  cap('outer', P, D / 2, false);
+  cap('inner', IN, D / 2 + .6, false);
+  cap('outer', P, D / 2, true);
+  cap('inner', IN, D / 2 + .6, true);
 
-                <div class="input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                  </span>
-                  <input type="password" id="sliderLogPass" placeholder="Palavra-passe" value="password123" required autocomplete="current-password">
-                  <button type="button" class="btn-toggle-eye" aria-label="Mostrar ou ocultar senha">
-                    <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="m9.88 9.88 4.24 4.24m-6.36-2.12a9 9 0 0 1 12.24 0M1 1l22 22M3 13.5A10.05 10.05 0 0 1 2 12s3-7 10-7a9.74 9.74 0 0 1 5.39 1.61M21.82 13.5a10.05 10.05 0 0 1-1.82 2.5C18 18 15 19 12 19a9.7 9.7 0 0 1-4.39-1.05"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
+  P.forEach((a, i) => {
+    const b = P[(i + 1) % P.length];
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const L = Math.hypot(dx, dy);
+    const mx = (a[0] + b[0]) / 2 - 100, my = (a[1] + b[1]) / 2 - 100;
+    const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    const s = document.createElement('span');
+    s.className = 'side';
+    s.style.width = L + 'px';
+    s.style.height = D + 'px';
+    s.style.left = (-L / 2) + 'px';
+    s.style.top = (-D / 2) + 'px';
+    s.style.transform = `translate3d(${mx}px, ${my}px, 0) rotateZ(${ang}deg) rotateX(90deg)`;
+    s.style.filter = `brightness(${(.55 + .45 * Math.abs(Math.cos((ang - 35) * Math.PI / 180))).toFixed(2)})`;
+    spin.appendChild(s);
+  });
 
-              <div class="forgot-wrapper">
-                <a href="javascript:void(0)" class="forgot-link" onclick="handleForgotPassword()">Esqueceu-se da palavra-passe?</a>
-              </div>
+  /* ---------- utilitários ---------- */
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const EASE = 'cubic-bezier(.22,.8,.2,1)';
 
-              <div class="btn-submit-container">
-                <button type="submit" class="btn-gradient-submit">
-                  <span>INICIAR SESSÃO</span>
-                  <span class="arrow-icon">&rarr;</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+  function anim(el, kf, dur, easing = EASE, delay = 0) {
+    const a = el.animate(kf, { duration: dur, easing, delay, fill: 'both' });
+    return a.finished.then(() => {
+      try { a.commitStyles(); } catch (e) {}
+      a.cancel();
+    });
+  }
 
-        <!-- Form: Criar Conta -->
-        <div class="form-panel register-panel" id="sliderRegisterPanel">
-          <div class="panel-content">
-            <h2 class="form-title">Criar conta</h2>
+  function setM(el, t) { el.textContent = t; el.dataset.t = t; }
 
-            <!-- Stepper 4 Passos -->
-            <div class="stepper-bar">
-              <div class="step-col active" data-step="1">
-                <div class="step-badge">1</div>
-                <span class="step-caption">Dados</span>
-              </div>
-              <div class="step-col" data-step="2">
-                <div class="step-badge">2</div>
-                <span class="step-caption">Pessoais</span>
-              </div>
-              <div class="step-col" data-step="3">
-                <div class="step-badge">3</div>
-                <span class="step-caption">E-mail</span>
-              </div>
-              <div class="step-col" data-step="4">
-                <div class="step-badge">4</div>
-                <span class="step-caption">Senha</span>
-              </div>
-            </div>
+  // largura de um texto, em "em"
+  function em(text) {
+    meas.textContent = text;
+    return meas.getBoundingClientRect().width / 100;
+  }
 
-            <form id="sliderRegisterForm" class="auth-form" novalidate>
-              <div class="inputs-stack">
-                <div class="input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                  </span>
-                  <input type="text" id="sliderRegName" placeholder="Nome completo" required autocomplete="name">
-                </div>
+  /* ---------- sequência ---------- */
+  async function run() {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
-                <div class="input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                    </svg>
-                  </span>
-                  <input type="email" id="sliderRegEmail" placeholder="E-mail" required autocomplete="email">
-                </div>
+    const FS_BIG = 140, FS_END = 60, T_END = FS_END * 0.72;
+    const wN = em('N'), wS = em('S');
+    const wR1 = em('ai'), wR2 = em('nuocca'), wR3 = em('ecivres');
 
-                <div class="input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                  </span>
-                  <input type="password" id="sliderRegPass" placeholder="Palavra-passe" required autocomplete="new-password">
-                  <button type="button" class="btn-toggle-eye" aria-label="Mostrar ou ocultar senha">
-                    <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="m9.88 9.88 4.24 4.24m-6.36-2.12a9 9 0 0 1 12.24 0M1 1l22 22M3 13.5A10.05 10.05 0 0 1 2 12s3-7 10-7a9.74 9.74 0 0 1 5.39 1.61M21.82 13.5a10.05 10.05 0 0 1-1.82 2.5C18 18 15 19 12 19a9.7 9.7 0 0 1-4.39-1.05"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
+    /* 1. O T aparece "deitado" para a esquerda */
+    await Promise.all([
+      anim(tscale, [{ opacity: 0 }, { opacity: 1 }], 600, 'ease-out'),
+      anim(enter, [{ transform: 'scale(.55)' }, { transform: 'scale(1)' }], 700, 'cubic-bezier(.2,.9,.25,1.15)')
+    ]);
+    await sleep(300);
 
-              <div class="switch-helper-text">
-                Já tem uma conta? <a href="javascript:void(0)" class="link-action" id="sliderLinkToLogin">Iniciar sessão</a>
-              </div>
+    /* 2. Gira pelas 4 posições: esquerda → pernas para o ar → direita → normal */
+    const steps = [[-90, -180], [-180, -270], [-270, -360]];
+    for (const [a, b] of steps) {
+      await anim(spin,
+        [{ transform: `rotateZ(${a}deg)` }, { transform: `rotateZ(${b}deg)` }],
+        560, 'cubic-bezier(.55,.05,.25,1.18)');
+      await sleep(220);
+    }
+    await sleep(200);
 
-              <div class="btn-submit-container">
-                <button type="submit" class="btn-gradient-submit" id="btnSliderRegSubmit">
-                  <span>SEGUINTE</span>
-                  <span class="arrow-icon">&rarr;</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+    /* 3. T encolhe e surgem o N e o S: NTS */
+    const dB = 800;
+    await Promise.all([
+      anim(logo, [{ fontSize: '280px' }, { fontSize: FS_BIG + 'px' }], dB),
+      anim(tslot, [{ width: '200px', height: '200px' }, { width: '100px', height: '100px' }], dB),
+      anim(tscale, [{ transform: 'scale(1)' }, { transform: 'scale(.5)' }], dB),
+      anim(h1, [
+        { width: '0px', opacity: 0, transform: 'translateX(60px)' },
+        { width: (wN * FS_BIG) + 'px', opacity: 1, transform: 'translateX(0px)' }
+      ], dB),
+      anim(h3, [
+        { width: '0px', opacity: 0, transform: 'translateX(-60px)' },
+        { width: (wS * FS_BIG) + 'px', opacity: 1, transform: 'translateX(0px)' }
+      ], dB)
+    ]);
+    await sleep(500);
 
-      </div>
+    /* 4. NTS expande e dá espaço a "Nai Tnuocca Secivres" */
+    const dC = 1000;
+    const grow = (r, w, delay) => anim(r,
+      [{ width: '0px', opacity: 0 }, { width: (w * FS_END) + 'px', opacity: 1 }],
+      dC - 150, EASE, delay);
+    await Promise.all([
+      anim(logo, [{ fontSize: FS_BIG + 'px', gap: '0px' }, { fontSize: FS_END + 'px', gap: '30px' }], dC),
+      anim(tslot, [{ width: '100px', height: '100px' }, { width: T_END * 1.15 + 'px', height: T_END * 1.15 + 'px' }], dC),
+      anim(tscale, [{ transform: 'scale(.5)' }, { transform: `scale(${(T_END * 1.15 / 200).toFixed(4)})` }], dC),
+      anim(h1, [{ width: (wN * FS_BIG) + 'px' }, { width: (wN * FS_END) + 'px' }], dC),
+      anim(h3, [{ width: (wS * FS_BIG) + 'px' }, { width: (wS * FS_END) + 'px' }], dC),
+      grow(r1, wR1, 150), grow(r2, wR2, 0), grow(r3, wR3, 300)
+    ]);
+    [r1, r2, r3].forEach(r => { r.style.clipPath = 'none'; });
+    await sleep(600);
 
-      <!-- OVERLAY DESLIZANTE (LADO ESCURO COM ILUMINAÇÃO) -->
-      <div class="overlay-container" id="overlayContainer">
-        <div class="overlay">
+    /* 5. As palavras viram e ficam: Services account Ian */
+    const flipOut = w => anim(w, [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(90deg)' }], 340, 'ease-in');
+    const flipIn  = w => anim(w, [{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0deg)' }], 340, 'ease-out');
+    await Promise.all([w1, w2, w3].map(flipOut));
 
-          <!-- Painel Esquerdo: Bem-vindo de volta! (Texto e botão ao meio, popup em baixo) -->
-          <div class="overlay-panel overlay-left">
-            <div class="ambient-glow purple-glow-bottom"></div>
-            <div class="panel-content">
-              
-              <!-- Bloco ao Meio -->
-              <div class="welcome-mid-block">
-                <h2 class="hero-title">Bem-vindo<br><span class="highlight-cyan">de volta!</span></h2>
-                <p class="hero-subtitle">Faça login na sua conta para continuar a usar todas as funcionalidades.</p>
+    // troca de conteúdo enquanto as palavras estão de lado
+    setM(h1, 'I');       h1.style.width = (em('I') * FS_END) + 'px';
+    setM(r1, 'an');      r1.style.width = (em('an') * FS_END) + 'px';
+    tslot.style.display = 'none';
+    setM(r2, 'Account'); r2.style.width = (em('Account') * FS_END) + 'px';
+    setM(h3, 'S');       h3.style.width = (em('S') * FS_END) + 'px';
+    setM(r3, 'ervices'); r3.style.width = (em('ervices') * FS_END) + 'px';
 
-                <button type="button" class="btn-glow-pill" id="sliderBtnToLogin">
-                  <span>FAZER LOGIN</span>
-                  <span class="arrow-icon">&rarr;</span>
-                </button>
-              </div>
+    await Promise.all([w1, w2, w3].map(flipIn));
 
-              <!-- Popup Roxo em Baixo -->
-              <div class="testimonial-box">
-                <p class="testimonial-text">Registar-me neste site foi a melhor decisão que tomei.</p>
-                <div class="author-row">
-                  <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&auto=format&fit=crop&q=80" alt="James Anderson" class="author-img">
-                  <div class="author-meta">
-                    <span class="author-name">James Anderson</span>
-                    <span class="author-job">Atleta</span>
-                  </div>
-                </div>
-              </div>
+    /* 6. Assinatura */
+    await anim(credit, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }], 700, 'ease-out');
 
-              <div class="testimonial-dots">
-                <span class="dot active"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-              </div>
-            </div>
-          </div>
+    /* 7. Passa para a página de autenticação, mantendo parâmetros SSO */
+    await sleep(900);
+    await anim(stage, [{ opacity: 1 }, { opacity: 0 }], 350, 'ease-in');
+    // Preserva ?redirect_to= e outros params SSO caso venham do sso-client.js
+    location.replace('auth.html' + window.location.search);
+  }
 
-          <!-- Painel Direito: Olá, amigo! (Centrado) -->
-          <div class="overlay-panel overlay-right">
-            <div class="ambient-glow purple-blue-glow-bottom"></div>
-            <div class="panel-content center-content">
-              <h2 class="hero-title">Olá, <span class="highlight-purple">amigo!</span></h2>
-              <p class="hero-subtitle">Crie a sua conta e comece a explorar tudo o que temos para si.</p>
-
-              <button type="button" class="btn-glow-pill" id="sliderBtnToRegister">
-                <span>CRIAR CONTA</span>
-                <span class="arrow-icon">&rarr;</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-    </div>
-  </main>
-
-
-  <!-- =========================================================================
-       2. VISTA LADO A LADO (MODO DESENVOLVEDOR - EXATO AO DESIGN DA IMAGEM)
-       ========================================================================= -->
-  <section class="side-by-side-display" id="sideBySideDisplay" style="display: none;">
-    <div class="showcase-grid">
-
-      <!-- ==================== CARD 1: CRIAR CONTA FLOW ==================== -->
-      <div class="auth-card-mockup card-register-flow">
-        
-        <!-- Dark Left Panel: Bem-vindo de volta! -->
-        <div class="mockup-panel dark-panel">
-          <div class="ambient-glow purple-glow-bottom"></div>
-
-          <div class="panel-inner">
-            <div class="welcome-mid-block">
-              <h1 class="hero-title">Bem-vindo<br><span class="highlight-cyan">de volta!</span></h1>
-              <p class="hero-subtitle">
-                Faça login na sua conta para continuar a usar todas as funcionalidades.
-              </p>
-
-              <button type="button" class="btn-glow-pill" onclick="simulateSwitchToLogin()">
-                <span>FAZER LOGIN</span>
-                <span class="arrow-sym">&rarr;</span>
-              </button>
-            </div>
-
-            <!-- Testimonial Glass Card de James Anderson (Em Baixo) -->
-            <div class="testimonial-box">
-              <p class="testimonial-text">
-                Registar-me neste site foi a melhor decisão que tomei.
-              </p>
-              <div class="author-row">
-                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&auto=format&fit=crop&q=80" alt="James Anderson" class="author-img">
-                <div class="author-meta">
-                  <span class="author-name">James Anderson</span>
-                  <span class="author-job">Atleta</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Dots Indicator abaixo do testemunho -->
-            <div class="testimonial-dots">
-              <span class="dot active"></span>
-              <span class="dot"></span>
-              <span class="dot"></span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Light Right Panel: Criar conta -->
-        <div class="mockup-panel light-panel">
-          <div class="panel-inner form-inner">
-            <h2 class="card-form-title">Criar conta</h2>
-
-            <!-- Stepper 4 Passos -->
-            <div class="stepper-bar">
-              <div class="step-col active" data-step="1">
-                <div class="step-badge">1</div>
-                <span class="step-caption">Dados</span>
-              </div>
-              <div class="step-col" data-step="2">
-                <div class="step-badge">2</div>
-                <span class="step-caption">Pessoais</span>
-              </div>
-              <div class="step-col" data-step="3">
-                <div class="step-badge">3</div>
-                <span class="step-caption">E-mail</span>
-              </div>
-              <div class="step-col" data-step="4">
-                <div class="step-badge">4</div>
-                <span class="step-caption">Senha</span>
-              </div>
-            </div>
-
-            <!-- Formulário Criar Conta -->
-            <form id="sideRegisterForm" class="clean-form" novalidate>
-              <div class="form-inputs-stack">
-                <div class="custom-input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                  </span>
-                  <input type="text" id="sideRegName" placeholder="Nome completo" required>
-                </div>
-
-                <div class="custom-input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                    </svg>
-                  </span>
-                  <input type="email" id="sideRegEmail" placeholder="E-mail" required>
-                </div>
-
-                <div class="custom-input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                  </span>
-                  <input type="password" id="sideRegPass" placeholder="Palavra-passe" required>
-                  <button type="button" class="btn-toggle-eye" aria-label="Mostrar ou ocultar senha">
-                    <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="m9.88 9.88 4.24 4.24m-6.36-2.12a9 9 0 0 1 12.24 0M1 1l22 22M3 13.5A10.05 10.05 0 0 1 2 12s3-7 10-7a9.74 9.74 0 0 1 5.39 1.61M21.82 13.5a10.05 10.05 0 0 1-1.82 2.5C18 18 15 19 12 19a9.7 9.7 0 0 1-4.39-1.05"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div class="switch-helper-text">
-                Já tem uma conta? <a href="javascript:void(0)" class="link-action" onclick="scrollToLoginCard()">Iniciar sessão</a>
-              </div>
-
-              <div class="btn-submit-wrapper">
-                <button type="submit" class="btn-gradient-pill">
-                  <span>SEGUINTE</span>
-                  <span class="arrow-sym">&rarr;</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-      </div>
-
-
-      <!-- ==================== CARD 2: INICIAR SESSÃO FLOW ==================== -->
-      <div class="auth-card-mockup card-login-flow" id="loginCardAnchor">
-        
-        <!-- Light Left Panel: Iniciar sessão -->
-        <div class="mockup-panel light-panel">
-          <div class="panel-inner form-inner">
-            <h2 class="card-form-title">Iniciar sessão</h2>
-
-            <!-- Social Circles com Google e Microsoft -->
-            <div class="social-circles-group">
-              <button type="button" class="social-round-btn" title="Facebook">f</button>
-              <button type="button" class="social-round-btn btn-google" id="btnGoogleLoginSide" title="Entrar com o Google">
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                </svg>
-              </button>
-              <button type="button" class="social-round-btn btn-microsoft" id="btnMicrosoftLoginSide" title="Entrar com a Microsoft">
-                <svg viewBox="0 0 21 21" width="16" height="16">
-                  <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-                  <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-                  <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-                </svg>
-              </button>
-              <button type="button" class="social-round-btn" title="LinkedIn">in</button>
-            </div>
-
-            <!-- Divider 'ou' -->
-            <div class="clean-divider">
-              <span>ou</span>
-            </div>
-
-            <form id="sideLoginForm" class="clean-form" novalidate>
-              <div class="form-inputs-stack">
-                <div class="custom-input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                    </svg>
-                  </span>
-                  <input type="email" id="sideLogEmail" placeholder="E-mail" value="demo@exemplo.com" required>
-                </div>
-
-                <div class="custom-input-box">
-                  <span class="input-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                  </span>
-                  <input type="password" id="sideLogPass" placeholder="Palavra-passe" value="password123" required>
-                </div>
-              </div>
-
-              <div class="forgot-wrapper">
-                <a href="javascript:void(0)" class="forgot-pwd-link" onclick="handleForgotPassword()">Esqueceu-se da palavra-passe?</a>
-              </div>
-
-              <div class="btn-submit-wrapper">
-                <button type="submit" class="btn-gradient-pill">
-                  <span>INICIAR SESSÃO</span>
-                  <span class="arrow-sym">&rarr;</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- Dark Right Panel: Olá, amigo! -->
-        <div class="mockup-panel dark-panel">
-          <div class="ambient-glow purple-blue-glow-bottom"></div>
-
-          <div class="panel-inner center-content">
-            <h1 class="hero-title">Olá, <span class="highlight-purple">amigo!</span></h1>
-            <p class="hero-subtitle">
-              Crie a sua conta e comece a explorar tudo o que temos para si.
-            </p>
-
-            <button type="button" class="btn-glow-pill" onclick="simulateSwitchToRegister()">
-              <span>CRIAR CONTA</span>
-              <span class="arrow-sym">&rarr;</span>
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-  </section>
-
-  <!-- Modal de Confirmação de Sessão Ativa -->
-  <div class="session-modal-overlay" id="sessionModal">
-    <div class="session-modal-card">
-      <div class="modal-badge-success" id="modalBadge">✓ Autenticado com Sucesso</div>
-      <div class="modal-user-avatar" id="modalUserAvatar">U</div>
-      <h3 id="modalUserName">Utilizador</h3>
-      <p id="modalUserEmail">user@exemplo.com</p>
-      <div class="modal-info-box" id="modalProviderInfo">
-        <p>Autenticação concluída com sucesso!</p>
-      </div>
-      <button type="button" class="btn-gradient-submit" id="modalCloseBtn" style="min-width: 140px; margin: 0 auto;">Continuar</button>
-    </div>
-  </div>
-
-  <!-- =====================================================
-       CONFIGURAÇÃO DE AUTENTICAÇÃO SOCIAL
-       Google Client ID e Microsoft App ID
-       ===================================================== -->
-  <script>
-    window.GOOGLE_CLIENT_ID = '362476610307-c7c43j59d215md8k4gfavbb3jnsujnfs.apps.googleusercontent.com';
-    window.MICROSOFT_CLIENT_ID = '25456b09-9cf2-44e2-a112-7a12fddd080f';
-  </script>
-  <script src="script.js"></script>
+  run();
+})();
+</script>
 </body>
 </html>

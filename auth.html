@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autenticação | Iniciar Sessão & Criar Conta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Microsoft Authentication Library (MSAL.js) -->
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" async defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="mode-user-production">
+
+  <!-- =========================================================================
+       BARRA DE DESENVOLVEDOR (ATIVADA SOMENTE VIA BOOKMARKLET)
+       ========================================================================= -->
+  <header class="dev-nav-bar" id="devNavBar" style="display: none;">
+    <div class="dev-brand">
+      <span class="dev-status-dot"></span>
+      <strong>Account Services</strong>
+      <span class="dev-badge">Modo Desenvolvedor</span>
+    </div>
+    <div class="dev-view-switch">
+      <button type="button" class="dev-btn" id="btnDevSideBySide" title="Ver exatamente os dois cartões como na imagem">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="4" width="9" height="16" rx="2"></rect>
+          <rect x="13" y="4" width="9" height="16" rx="2"></rect>
+        </svg>
+        <span>Vista Lado a Lado (Design)</span>
+      </button>
+      <button type="button" class="dev-btn active" id="btnDevInteractive" title="Cartão interativo deslizante de produção">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 2l4 4-4 4"></path>
+          <path d="M3 11v-1a4 4 0 0 1 4-4h14"></path>
+          <path d="M7 22l-4-4 4-4"></path>
+          <path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        <span>Modo Interativo (Deslizante)</span>
+      </button>
+    </div>
+    <button type="button" class="dev-close-btn" id="btnDevClose" title="Sair do modo desenvolvedor">✕</button>
+  </header>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- =========================================================================
+       SSO — ECRÃ DE AUTORIZAÇÃO (estilo Google)
+       Mostrado apenas quando ?redirect_to= está presente no URL
+       ========================================================================= -->
+  <div class="sso-auth-screen" id="ssoAuthScreen" style="display:none;">
+    <div class="sso-auth-card">
+
+      <!-- Cabeçalho: logo Account Services -->
+      <div class="sso-as-header">
+        <svg class="sso-as-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="10" fill="url(#ssoGrad)"/>
+          <defs>
+            <linearGradient id="ssoGrad" x1="0" y1="0" x2="40" y2="40">
+              <stop offset="0%" stop-color="#4f46e5"/>
+              <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+          <path d="M20 10c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 12c-5.33 0-10 2.67-10 5.33V29h20v-1.67C30 24.67 25.33 22 20 22z" fill="white"/>
+        </svg>
+        <span class="sso-as-name">Account Services</span>
+      </div>
+
+      <!-- App a pedir acesso -->
+      <div class="sso-app-block">
+        <div class="sso-app-icon" id="ssoAppIcon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#6366f1" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="sso-app-info">
+          <h1 class="sso-app-title">Iniciar sessão em<br><span id="ssoAppNameDisplay">App</span></h1>
+        </div>
+      </div>
+
+      <!-- Divider com seta -->
+      <div class="sso-arrow-row">
+        <div class="sso-arrow-line"></div>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9ca3af" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        <div class="sso-arrow-line"></div>
+      </div>
+
+      <!-- O que será partilhado -->
+      <p class="sso-share-title">A tua conta vai partilhar com <strong id="ssoShareAppName">App</strong>:</p>
+      <ul class="sso-permissions-list">
+        <li>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Nome e foto de perfil
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Endereço de e-mail
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4ade80" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          Autenticação segura (sem partilha de palavra-passe)
+        </li>
+      </ul>
+
+      <!-- Botões sociais -->
+      <div class="sso-social-btns">
+        <button type="button" class="sso-btn-social sso-btn-google" id="ssoGoogleBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          Continuar com Google
+        </button>
+        <button type="button" class="sso-btn-social sso-btn-microsoft" id="ssoMicrosoftBtn">
+          <svg viewBox="0 0 21 21" width="16" height="16">
+            <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+            <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+            <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+          </svg>
+          Continuar com Microsoft
+        </button>
+      </div>
+
+      <!-- Separador -->
+      <div class="sso-divider"><span>ou</span></div>
+
+      <!-- Form email/password inline -->
+      <form class="sso-email-form" id="ssoEmailForm" autocomplete="off">
+        <div class="sso-input-group">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <input type="email" id="ssoEmail" placeholder="E-mail" required autocomplete="email">
+        </div>
+        <div class="sso-input-group">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#9ca3af" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <input type="password" id="ssoPassword" placeholder="Palavra-passe" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="sso-btn-continue">
+          Continuar
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <!-- Rodapé -->
+      <div class="sso-footer">
+        <button type="button" class="sso-btn-cancel" id="ssoCancelBtn">Cancelar</button>
+        <span class="sso-footer-sep">·</span>
+        <span class="sso-powered">Protegido por <strong>Account Services</strong></span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       1. MODO INTERATIVO (DESLIZANTE) - VISTO PELO UTILIZADOR COMUM
+       ========================================================================= -->
+  <main class="auth-interactive-display" id="interactiveDisplay">
+    <div class="auth-card" id="authCard">
+
+      <!-- FORMS (LADO BRANCO) -->
+      <div class="forms-wrapper">
+
+        <!-- Form: Iniciar Sessão -->
+        <div class="form-panel login-panel" id="sliderLoginPanel">
+          <div class="panel-content">
+            <h2 class="form-title">Iniciar sessão</h2>
+
+            <!-- Botões Sociais com Google e Microsoft Integrados -->
+            <div class="social-group">
+              <button type="button" class="btn-social" title="Facebook">f</button>
+              <button type="button" class="btn-social btn-google" id="btnGoogleLoginSlider" title="Entrar com o Google">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+              </button>
+              <button type="button" class="btn-social btn-microsoft" id="btnMicrosoftLoginSlider" title="Entrar com a Microsoft">
+                <svg viewBox="0 0 21 21" width="16" height="16">
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                </svg>
+              </button>
+              <button type="button" class="btn-social" title="LinkedIn">in</button>
+            </div>
+
+            <!-- Divisor 'ou' -->
+            <div class="divider">
+              <span>ou</span>
+            </div>
+
+            <form id="sliderLoginForm" class="auth-form" novalidate>
+              <div class="inputs-stack">
+                <div class="input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                    </svg>
+                  </span>
+                  <input type="email" id="sliderLogEmail" placeholder="E-mail" value="demo@exemplo.com" required autocomplete="email">
+                </div>
+
+                <div class="input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </span>
+                  <input type="password" id="sliderLogPass" placeholder="Palavra-passe" value="password123" required autocomplete="current-password">
+                  <button type="button" class="btn-toggle-eye" aria-label="Mostrar ou ocultar senha">
+                    <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m9.88 9.88 4.24 4.24m-6.36-2.12a9 9 0 0 1 12.24 0M1 1l22 22M3 13.5A10.05 10.05 0 0 1 2 12s3-7 10-7a9.74 9.74 0 0 1 5.39 1.61M21.82 13.5a10.05 10.05 0 0 1-1.82 2.5C18 18 15 19 12 19a9.7 9.7 0 0 1-4.39-1.05"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="forgot-wrapper">
+                <a href="javascript:void(0)" class="forgot-link" onclick="handleForgotPassword()">Esqueceu-se da palavra-passe?</a>
+              </div>
+
+              <div class="btn-submit-container">
+                <button type="submit" class="btn-gradient-submit">
+                  <span>INICIAR SESSÃO</span>
+                  <span class="arrow-icon">&rarr;</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Form: Criar Conta -->
+        <div class="form-panel register-panel" id="sliderRegisterPanel">
+          <div class="panel-content">
+            <h2 class="form-title">Criar conta</h2>
+
+            <!-- Stepper 4 Passos -->
+            <div class="stepper-bar">
+              <div class="step-col active" data-step="1">
+                <div class="step-badge">1</div>
+                <span class="step-caption">Dados</span>
+              </div>
+              <div class="step-col" data-step="2">
+                <div class="step-badge">2</div>
+                <span class="step-caption">Pessoais</span>
+              </div>
+              <div class="step-col" data-step="3">
+                <div class="step-badge">3</div>
+                <span class="step-caption">E-mail</span>
+              </div>
+              <div class="step-col" data-step="4">
+                <div class="step-badge">4</div>
+                <span class="step-caption">Senha</span>
+              </div>
+            </div>
+
+            <form id="sliderRegisterForm" class="auth-form" novalidate>
+              <div class="inputs-stack">
+                <div class="input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                  </span>
+                  <input type="text" id="sliderRegName" placeholder="Nome completo" required autocomplete="name">
+                </div>
+
+                <div class="input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                    </svg>
+                  </span>
+                  <input type="email" id="sliderRegEmail" placeholder="E-mail" required autocomplete="email">
+                </div>
+
+                <div class="input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </span>
+                  <input type="password" id="sliderRegPass" placeholder="Palavra-passe" required autocomplete="new-password">
+                  <button type="button" class="btn-toggle-eye" aria-label="Mostrar ou ocultar senha">
+                    <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m9.88 9.88 4.24 4.24m-6.36-2.12a9 9 0 0 1 12.24 0M1 1l22 22M3 13.5A10.05 10.05 0 0 1 2 12s3-7 10-7a9.74 9.74 0 0 1 5.39 1.61M21.82 13.5a10.05 10.05 0 0 1-1.82 2.5C18 18 15 19 12 19a9.7 9.7 0 0 1-4.39-1.05"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="switch-helper-text">
+                Já tem uma conta? <a href="javascript:void(0)" class="link-action" id="sliderLinkToLogin">Iniciar sessão</a>
+              </div>
+
+              <div class="btn-submit-container">
+                <button type="submit" class="btn-gradient-submit" id="btnSliderRegSubmit">
+                  <span>SEGUINTE</span>
+                  <span class="arrow-icon">&rarr;</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- OVERLAY DESLIZANTE (LADO ESCURO COM ILUMINAÇÃO) -->
+      <div class="overlay-container" id="overlayContainer">
+        <div class="overlay">
+
+          <!-- Painel Esquerdo: Bem-vindo de volta! (Texto e botão ao meio, popup em baixo) -->
+          <div class="overlay-panel overlay-left">
+            <div class="ambient-glow purple-glow-bottom"></div>
+            <div class="panel-content">
+              
+              <!-- Bloco ao Meio -->
+              <div class="welcome-mid-block">
+                <h2 class="hero-title">Bem-vindo<br><span class="highlight-cyan">de volta!</span></h2>
+                <p class="hero-subtitle">Faça login na sua conta para continuar a usar todas as funcionalidades.</p>
+
+                <button type="button" class="btn-glow-pill" id="sliderBtnToLogin">
+                  <span>FAZER LOGIN</span>
+                  <span class="arrow-icon">&rarr;</span>
+                </button>
+              </div>
+
+              <!-- Popup Roxo em Baixo -->
+              <div class="testimonial-box">
+                <p class="testimonial-text">Registar-me neste site foi a melhor decisão que tomei.</p>
+                <div class="author-row">
+                  <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&auto=format&fit=crop&q=80" alt="James Anderson" class="author-img">
+                  <div class="author-meta">
+                    <span class="author-name">James Anderson</span>
+                    <span class="author-job">Atleta</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="testimonial-dots">
+                <span class="dot active"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Painel Direito: Olá, amigo! (Centrado) -->
+          <div class="overlay-panel overlay-right">
+            <div class="ambient-glow purple-blue-glow-bottom"></div>
+            <div class="panel-content center-content">
+              <h2 class="hero-title">Olá, <span class="highlight-purple">amigo!</span></h2>
+              <p class="hero-subtitle">Crie a sua conta e comece a explorar tudo o que temos para si.</p>
+
+              <button type="button" class="btn-glow-pill" id="sliderBtnToRegister">
+                <span>CRIAR CONTA</span>
+                <span class="arrow-icon">&rarr;</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+
+  <!-- =========================================================================
+       2. VISTA LADO A LADO (MODO DESENVOLVEDOR - EXATO AO DESIGN DA IMAGEM)
+       ========================================================================= -->
+  <section class="side-by-side-display" id="sideBySideDisplay" style="display: none;">
+    <div class="showcase-grid">
+
+      <!-- ==================== CARD 1: CRIAR CONTA FLOW ==================== -->
+      <div class="auth-card-mockup card-register-flow">
+        
+        <!-- Dark Left Panel: Bem-vindo de volta! -->
+        <div class="mockup-panel dark-panel">
+          <div class="ambient-glow purple-glow-bottom"></div>
+
+          <div class="panel-inner">
+            <div class="welcome-mid-block">
+              <h1 class="hero-title">Bem-vindo<br><span class="highlight-cyan">de volta!</span></h1>
+              <p class="hero-subtitle">
+                Faça login na sua conta para continuar a usar todas as funcionalidades.
+              </p>
+
+              <button type="button" class="btn-glow-pill" onclick="simulateSwitchToLogin()">
+                <span>FAZER LOGIN</span>
+                <span class="arrow-sym">&rarr;</span>
+              </button>
+            </div>
+
+            <!-- Testimonial Glass Card de James Anderson (Em Baixo) -->
+            <div class="testimonial-box">
+              <p class="testimonial-text">
+                Registar-me neste site foi a melhor decisão que tomei.
+              </p>
+              <div class="author-row">
+                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=120&auto=format&fit=crop&q=80" alt="James Anderson" class="author-img">
+                <div class="author-meta">
+                  <span class="author-name">James Anderson</span>
+                  <span class="author-job">Atleta</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dots Indicator abaixo do testemunho -->
+            <div class="testimonial-dots">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Light Right Panel: Criar conta -->
+        <div class="mockup-panel light-panel">
+          <div class="panel-inner form-inner">
+            <h2 class="card-form-title">Criar conta</h2>
+
+            <!-- Stepper 4 Passos -->
+            <div class="stepper-bar">
+              <div class="step-col active" data-step="1">
+                <div class="step-badge">1</div>
+                <span class="step-caption">Dados</span>
+              </div>
+              <div class="step-col" data-step="2">
+                <div class="step-badge">2</div>
+                <span class="step-caption">Pessoais</span>
+              </div>
+              <div class="step-col" data-step="3">
+                <div class="step-badge">3</div>
+                <span class="step-caption">E-mail</span>
+              </div>
+              <div class="step-col" data-step="4">
+                <div class="step-badge">4</div>
+                <span class="step-caption">Senha</span>
+              </div>
+            </div>
+
+            <!-- Formulário Criar Conta -->
+            <form id="sideRegisterForm" class="clean-form" novalidate>
+              <div class="form-inputs-stack">
+                <div class="custom-input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                  </span>
+                  <input type="text" id="sideRegName" placeholder="Nome completo" required>
+                </div>
+
+                <div class="custom-input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                    </svg>
+                  </span>
+                  <input type="email" id="sideRegEmail" placeholder="E-mail" required>
+                </div>
+
+                <div class="custom-input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </span>
+                  <input type="password" id="sideRegPass" placeholder="Palavra-passe" required>
+                  <button type="button" class="btn-toggle-eye" aria-label="Mostrar ou ocultar senha">
+                    <svg class="eye-off-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m9.88 9.88 4.24 4.24m-6.36-2.12a9 9 0 0 1 12.24 0M1 1l22 22M3 13.5A10.05 10.05 0 0 1 2 12s3-7 10-7a9.74 9.74 0 0 1 5.39 1.61M21.82 13.5a10.05 10.05 0 0 1-1.82 2.5C18 18 15 19 12 19a9.7 9.7 0 0 1-4.39-1.05"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="switch-helper-text">
+                Já tem uma conta? <a href="javascript:void(0)" class="link-action" onclick="scrollToLoginCard()">Iniciar sessão</a>
+              </div>
+
+              <div class="btn-submit-wrapper">
+                <button type="submit" class="btn-gradient-pill">
+                  <span>SEGUINTE</span>
+                  <span class="arrow-sym">&rarr;</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ==================== CARD 2: INICIAR SESSÃO FLOW ==================== -->
+      <div class="auth-card-mockup card-login-flow" id="loginCardAnchor">
+        
+        <!-- Light Left Panel: Iniciar sessão -->
+        <div class="mockup-panel light-panel">
+          <div class="panel-inner form-inner">
+            <h2 class="card-form-title">Iniciar sessão</h2>
+
+            <!-- Social Circles com Google e Microsoft -->
+            <div class="social-circles-group">
+              <button type="button" class="social-round-btn" title="Facebook">f</button>
+              <button type="button" class="social-round-btn btn-google" id="btnGoogleLoginSide" title="Entrar com o Google">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+              </button>
+              <button type="button" class="social-round-btn btn-microsoft" id="btnMicrosoftLoginSide" title="Entrar com a Microsoft">
+                <svg viewBox="0 0 21 21" width="16" height="16">
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                </svg>
+              </button>
+              <button type="button" class="social-round-btn" title="LinkedIn">in</button>
+            </div>
+
+            <!-- Divider 'ou' -->
+            <div class="clean-divider">
+              <span>ou</span>
+            </div>
+
+            <form id="sideLoginForm" class="clean-form" novalidate>
+              <div class="form-inputs-stack">
+                <div class="custom-input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                    </svg>
+                  </span>
+                  <input type="email" id="sideLogEmail" placeholder="E-mail" value="demo@exemplo.com" required>
+                </div>
+
+                <div class="custom-input-box">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </span>
+                  <input type="password" id="sideLogPass" placeholder="Palavra-passe" value="password123" required>
+                </div>
+              </div>
+
+              <div class="forgot-wrapper">
+                <a href="javascript:void(0)" class="forgot-pwd-link" onclick="handleForgotPassword()">Esqueceu-se da palavra-passe?</a>
+              </div>
+
+              <div class="btn-submit-wrapper">
+                <button type="submit" class="btn-gradient-pill">
+                  <span>INICIAR SESSÃO</span>
+                  <span class="arrow-sym">&rarr;</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Dark Right Panel: Olá, amigo! -->
+        <div class="mockup-panel dark-panel">
+          <div class="ambient-glow purple-blue-glow-bottom"></div>
+
+          <div class="panel-inner center-content">
+            <h1 class="hero-title">Olá, <span class="highlight-purple">amigo!</span></h1>
+            <p class="hero-subtitle">
+              Crie a sua conta e comece a explorar tudo o que temos para si.
+            </p>
+
+            <button type="button" class="btn-glow-pill" onclick="simulateSwitchToRegister()">
+              <span>CRIAR CONTA</span>
+              <span class="arrow-sym">&rarr;</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Modal de Confirmação de Sessão Ativa -->
+  <div class="session-modal-overlay" id="sessionModal">
+    <div class="session-modal-card">
+      <div class="modal-badge-success" id="modalBadge">✓ Autenticado com Sucesso</div>
+      <div class="modal-user-avatar" id="modalUserAvatar">U</div>
+      <h3 id="modalUserName">Utilizador</h3>
+      <p id="modalUserEmail">user@exemplo.com</p>
+      <div class="modal-info-box" id="modalProviderInfo">
+        <p>Autenticação concluída com sucesso!</p>
+      </div>
+      <button type="button" class="btn-gradient-submit" id="modalCloseBtn" style="min-width: 140px; margin: 0 auto;">Continuar</button>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       CONFIGURAÇÃO DE AUTENTICAÇÃO SOCIAL
+       Google Client ID e Microsoft App ID
+       ===================================================== -->
+  <script>
+    window.GOOGLE_CLIENT_ID = '362476610307-c7c43j59d215md8k4gfavbb3jnsujnfs.apps.googleusercontent.com';
+    window.MICROSOFT_CLIENT_ID = '25456b09-9cf2-44e2-a112-7a12fddd080f';
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>

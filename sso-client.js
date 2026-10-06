@@ -22,7 +22,7 @@
 (function (global) {
   'use strict';
 
-  const SSO_ORIGIN    = 'https://devilwolfpt.github.io/Account-Services/';
+  const SSO_ORIGIN = 'https://devilwolfpt.github.io/Account-Services/';
   const SESSION_KEY   = 'as_sso_session_cache';
   const TOKEN_VERSION = 1;
 
