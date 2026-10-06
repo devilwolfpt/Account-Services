@@ -11,6 +11,10 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Microsoft Authentication Library (MSAL.js) -->
   <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" async defer></script>
+  <!-- Google Firebase SDK (Cloud Firestore & Analytics - Gratuito e Seguro) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics-compat.js"></script>
   <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 <body class="mode-user-production">
@@ -210,7 +214,7 @@
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
                     </svg>
                   </span>
-                  <input type="email" id="sliderLogEmail" placeholder="E-mail" value="demo@exemplo.com" required autocomplete="email">
+                  <input type="text" inputmode="email" id="sliderLogEmail" placeholder="utilizador@nai.com ou utilizador" value="demo@nai.com" required autocomplete="username">
                 </div>
 
                 <div class="input-box">
@@ -260,7 +264,7 @@
               </div>
               <div class="step-col" data-step="3">
                 <div class="step-badge">3</div>
-                <span class="step-caption">E-mail</span>
+                <span class="step-caption">E-mail @nai</span>
               </div>
               <div class="step-col" data-step="4">
                 <div class="step-badge">4</div>
@@ -287,7 +291,7 @@
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
                     </svg>
                   </span>
-                  <input type="email" id="sliderRegEmail" placeholder="E-mail" required autocomplete="email">
+                  <input type="text" inputmode="email" id="sliderRegEmail" placeholder="utilizador ou utilizador@nai.com" required autocomplete="username">
                 </div>
 
                 <div class="input-box">
@@ -477,7 +481,7 @@
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
                     </svg>
                   </span>
-                  <input type="email" id="sideRegEmail" placeholder="E-mail" required>
+                  <input type="text" inputmode="email" id="sideRegEmail" placeholder="utilizador ou utilizador@nai.com" required autocomplete="username">
                 </div>
 
                 <div class="custom-input-box">
@@ -557,7 +561,7 @@
                       <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
                     </svg>
                   </span>
-                  <input type="email" id="sideLogEmail" placeholder="E-mail" value="demo@exemplo.com" required>
+                  <input type="text" inputmode="email" id="sideLogEmail" placeholder="utilizador@nai.com ou utilizador" value="demo@nai.com" required autocomplete="username">
                 </div>
 
                 <div class="custom-input-box">
@@ -622,12 +626,23 @@
   </div>
 
   <!-- =====================================================
-       CONFIGURAÇÃO DE AUTENTICAÇÃO SOCIAL
-       Google Client ID e Microsoft App ID
+       CONFIGURAÇÃO DE AUTENTICAÇÃO E BASE DE DADOS
+       Google Client ID, Microsoft App ID e Firebase Cloud
        ===================================================== -->
   <script>
     window.GOOGLE_CLIENT_ID = '362476610307-c7c43j59d215md8k4gfavbb3jnsujnfs.apps.googleusercontent.com';
     window.MICROSOFT_CLIENT_ID = '25456b09-9cf2-44e2-a112-7a12fddd080f';
+
+    // Base de dados Google Firebase Cloud Firestore (Segura e Gratuita - Spark Plan)
+    window.FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAQgoPkEJtuCn6uWXYTQzD4B8mTRS9cdAk",
+      authDomain: "account-services-3e9da.firebaseapp.com",
+      projectId: "account-services-3e9da",
+      storageBucket: "account-services-3e9da.firebasestorage.app",
+      messagingSenderId: "1036286140913",
+      appId: "1:1036286140913:web:bd130db8f542a60f81a450",
+      measurementId: "G-5T644B07YF"
+    };
   </script>
   <script src="script.js"></script>
 </body>

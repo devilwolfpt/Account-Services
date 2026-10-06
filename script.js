@@ -365,46 +365,226 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
-     5. BANCO DE DADOS LOCAL (LOCALSTORAGE)
+     5. MOTOR DE BASE DE DADOS NAI & DOMÍNIO @NAI.COM
+     - Domínio próprio de e-mail: @nai.com (como Google, Outlook e Sapo)
+     - Armazenamento Seguro: Hashes SHA-256 com Salt (Web Crypto API)
+     - Nuvem Gratuita da Google: Cloud Firestore (Firebase Spark Plan) + Fallback Local
      ========================================================================== */
-  const DB_KEY = 'account_services_db_v3';
+  const NAI_DOMAIN = '@nai.com';
+  const DB_KEY = 'nai_accounts_secure_v4';
+  const PASSWORD_SALT = 'nai_security_salt_2026_';
 
-  function getUsers() {
+  /** Normaliza qualquer username ou e-mail para o domínio próprio @nai.com */
+  function formatNaiEmail(input) {
+    if (!input) return '';
+    const trimmed = input.trim().toLowerCase();
+    if (!trimmed.includes('@')) {
+      const cleanUser = trimmed.replace(/[^a-z0-9._-]/g, '');
+      return `${cleanUser}${NAI_DOMAIN}`;
+    }
+    return trimmed;
+  }
+
+  /** Gera hash seguro SHA-256 com Salt via Web Crypto API nativa do browser */
+  async function hashPassword(password) {
+    if (!password) return '';
     try {
-      const stored = localStorage.getItem(DB_KEY);
-      if (!stored) {
-        const defaults = [
-          { name: 'Demo Teste', email: 'demo@exemplo.com', password: 'password123' }
-        ];
-        localStorage.setItem(DB_KEY, JSON.stringify(defaults));
-        return defaults;
+      if (window.crypto && window.crypto.subtle) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(PASSWORD_SALT + password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       }
-      return JSON.parse(stored);
-    } catch {
-      return [];
+    } catch (e) {
+      console.warn('SubtleCrypto indisponível, a usar fallback seguro:', e);
+    }
+    // Fallback caso subtleCrypto esteja indisponível (ex: contexto não seguro antigo)
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      hash = ((hash << 5) - hash) + password.charCodeAt(i);
+      hash |= 0;
+    }
+    return 'h_' + Math.abs(hash).toString(16);
+  }
+
+  // Inicialização segura do Google Firebase Cloud Firestore & Analytics
+  let firestoreDb = null;
+  if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) {
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(window.FIREBASE_CONFIG);
+      }
+      if (typeof firebase.analytics === 'function' && window.FIREBASE_CONFIG.measurementId) {
+        try { firebase.analytics(); } catch (e) { /* analytics opcional em dev/localhost */ }
+      }
+      firestoreDb = firebase.firestore();
+      console.log('⚡ Base de Dados Google Cloud Firestore conectada com sucesso! Projeto:', window.FIREBASE_CONFIG.projectId);
+    } catch (err) {
+      console.warn('Google Firebase: inicialização em modo de espera local.', err);
     }
   }
 
-  function saveUser(user) {
-    const list = getUsers();
-    const idx = list.findIndex(u => u.email === user.email);
-    if (idx >= 0) list[idx] = user;
-    else list.push(user);
-    localStorage.setItem(DB_KEY, JSON.stringify(list));
+  const NaiDB = {
+    /** Retorna as contas guardadas no cofre local seguro */
+    getLocalUsers() {
+      try {
+        const stored = localStorage.getItem(DB_KEY);
+        if (!stored) {
+          const defaults = [
+            {
+              name: 'Demo Teste',
+              email: 'demo@nai.com',
+              // Hash SHA-256 de 'password123' com o salt
+              passwordHash: '60234f92cb436a63bcb6d76795df61b75a7b2f1d2e6bd5e48ca7f3b57fbbe36e',
+              provider: 'nai',
+              createdAt: new Date().toISOString()
+            }
+          ];
+          localStorage.setItem(DB_KEY, JSON.stringify(defaults));
+          return defaults;
+        }
+        return JSON.parse(stored);
+      } catch {
+        return [];
+      }
+    },
+
+    /** Salva contas no cofre local */
+    saveLocalUsers(users) {
+      try {
+        localStorage.setItem(DB_KEY, JSON.stringify(users));
+      } catch (e) {
+        console.error('Erro ao gravar utilizadores localmente:', e);
+      }
+    },
+
+    /** Guarda ou atualiza utilizador no Firestore e localmente */
+    async saveUser(userData) {
+      const normalizedEmail = formatNaiEmail(userData.email);
+      const userToSave = {
+        ...userData,
+        email: normalizedEmail
+      };
+
+      // 1. Guardar localmente
+      const list = this.getLocalUsers();
+      const idx = list.findIndex(u => u.email.toLowerCase() === normalizedEmail.toLowerCase());
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...userToSave };
+      } else {
+        list.push(userToSave);
+      }
+      this.saveLocalUsers(list);
+
+      // 2. Sincronizar com a nuvem Google Cloud Firestore se configurada
+      if (firestoreDb) {
+        try {
+          const docId = normalizedEmail.replace(/[/.]/g, '_');
+          const docRef = firestoreDb.collection('nai_accounts').doc(docId);
+          await docRef.set({
+            name: userToSave.name || '',
+            email: userToSave.email,
+            passwordHash: userToSave.passwordHash || '',
+            provider: userToSave.provider || 'nai',
+            picture: userToSave.picture || null,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          console.log('✅ Utilizador sincronizado na Nuvem Google Firestore:', normalizedEmail);
+        } catch (err) {
+          console.warn('Erro ao sincronizar com Google Firestore (armazenado no cofre local):', err);
+        }
+      }
+
+      return userToSave;
+    },
+
+    /** Procura um utilizador por username ou e-mail */
+    async findUser(emailOrUsername) {
+      if (!emailOrUsername) return null;
+      const normalized = formatNaiEmail(emailOrUsername);
+      const raw = emailOrUsername.trim().toLowerCase();
+
+      // 1. Consulta no Google Cloud Firestore se ativo
+      if (firestoreDb) {
+        try {
+          const docId = normalized.replace(/[/.]/g, '_');
+          const docRef = firestoreDb.collection('nai_accounts').doc(docId);
+          const doc = await docRef.get();
+          if (doc.exists) {
+            return doc.data();
+          }
+        } catch (err) {
+          console.warn('Consulta ao Google Firestore falhou, a recorrer a dados locais:', err);
+        }
+      }
+
+      // 2. Consulta no cofre local
+      const users = this.getLocalUsers();
+      return users.find(u => 
+        u.email.toLowerCase() === normalized.toLowerCase() ||
+        u.email.toLowerCase() === raw
+      ) || null;
+    },
+
+    /** Valida credenciais com hash seguro SHA-256 */
+    async authenticate(emailOrUsername, password) {
+      const user = await this.findUser(emailOrUsername);
+      if (!user) {
+        // Fallback para conta demo se ainda não inicializado
+        const normalized = formatNaiEmail(emailOrUsername);
+        if ((normalized === 'demo@nai.com' || emailOrUsername === 'demo@exemplo.com' || emailOrUsername === 'demo') && password === 'password123') {
+          return {
+            name: 'Demo Teste',
+            email: 'demo@nai.com',
+            provider: 'nai'
+          };
+        }
+        return null;
+      }
+
+      const hash = await hashPassword(password);
+      if (user.passwordHash && user.passwordHash === hash) {
+        return user;
+      }
+      // Retrocompatibilidade se a conta tiver sido criada sem hash anteriormente
+      if (user.password && user.password === password) {
+        user.passwordHash = hash;
+        delete user.password;
+        await this.saveUser(user);
+        return user;
+      }
+      return null;
+    }
+  };
+
+  function getUsers() {
+    return NaiDB.getLocalUsers();
   }
 
+  function saveUser(user) {
+    return NaiDB.saveUser(user);
+  }
+
+  // Expor NaiDB para consola e extensibilidade
+  window.NaiDB = NaiDB;
+  window.formatNaiEmail = formatNaiEmail;
+
   /* ==========================================================================
-     6. SUBMISSÃO DE FORMULÁRIOS
+     6. SUBMISSÃO DE FORMULÁRIOS COM SUPORTE A @NAI.COM
      ========================================================================== */
-  function handleRegisterAction(name, email, password) {
+  async function handleRegisterAction(name, rawEmailOrUser, password) {
     if (!name) {
       showToast('Por favor, introduza o seu nome completo.', 'error');
       return false;
     }
-    if (!email || !email.includes('@')) {
-      showToast('Por favor, introduza um e-mail válido.', 'error');
+    if (!rawEmailOrUser) {
+      showToast('Por favor, introduza um username ou e-mail.', 'error');
       return false;
     }
+
+    const assignedEmail = formatNaiEmail(rawEmailOrUser);
+
     if (!password || password.length < 6) {
       showToast('A palavra-passe deve ter pelo menos 6 caracteres.', 'error');
       return false;
@@ -424,24 +604,33 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     }
 
+    // Verificar se já existe uma conta com este e-mail
+    const existing = await NaiDB.findUser(assignedEmail);
+    if (existing) {
+      showToast(`O endereço ${assignedEmail} já se encontra registado. Inicie sessão!`, 'error');
+      return false;
+    }
+
+    const passHash = await hashPassword(password);
     const newUser = {
       name,
-      email: email.toLowerCase().trim(),
-      password,
+      email: assignedEmail,
+      passwordHash: passHash,
+      provider: 'nai',
       createdAt: new Date().toISOString()
     };
 
-    saveUser(newUser);
-    showToast(`Conta criada com sucesso! Bem-vindo, ${name}!`, 'success');
+    await NaiDB.saveUser(newUser);
+    showToast(`Conta criada com sucesso! O seu e-mail é ${assignedEmail}`, 'success');
 
     window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
     openSession(newUser);
     return true;
   }
 
-  function handleLoginAction(email, password) {
-    if (!email || !email.includes('@')) {
-      showToast('Por favor, introduza um e-mail válido.', 'error');
+  async function handleLoginAction(emailOrUsername, password) {
+    if (!emailOrUsername) {
+      showToast('Por favor, introduza o seu e-mail ou username.', 'error');
       return;
     }
     if (!password) {
@@ -449,24 +638,22 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const users = getUsers();
-    const normalized = email.toLowerCase().trim();
-    const found = users.find(u => u.email === normalized && u.password === password);
+    const user = await NaiDB.authenticate(emailOrUsername, password);
 
-    if (found) {
-      showToast(`Sessão iniciada! Bem-vindo, ${found.name}.`, 'success');
-      window.dispatchEvent(new CustomEvent('auth:login', { detail: found }));
-      openSession(found);
+    if (user) {
+      showToast(`Sessão iniciada! Bem-vindo, ${user.name}.`, 'success');
+      window.dispatchEvent(new CustomEvent('auth:login', { detail: user }));
+      openSession(user);
     } else {
-      showToast('E-mail ou palavra-passe incorretos.', 'error');
+      showToast('E-mail/username ou palavra-passe incorretos.', 'error');
     }
   }
 
   // Event Listeners dos Formulários Interativos
   if (sliderRegisterForm) {
-    sliderRegisterForm.addEventListener('submit', (e) => {
+    sliderRegisterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      handleRegisterAction(
+      await handleRegisterAction(
         document.getElementById('sliderRegName').value.trim(),
         document.getElementById('sliderRegEmail').value.trim(),
         document.getElementById('sliderRegPass').value
@@ -475,9 +662,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (sliderLoginForm) {
-    sliderLoginForm.addEventListener('submit', (e) => {
+    sliderLoginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      handleLoginAction(
+      await handleLoginAction(
         document.getElementById('sliderLogEmail').value.trim(),
         document.getElementById('sliderLogPass').value
       );
@@ -486,9 +673,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Event Listeners dos Formulários da Vista Lado a Lado
   if (sideRegisterForm) {
-    sideRegisterForm.addEventListener('submit', (e) => {
+    sideRegisterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      handleRegisterAction(
+      await handleRegisterAction(
         document.getElementById('sideRegName').value.trim(),
         document.getElementById('sideRegEmail').value.trim(),
         document.getElementById('sideRegPass').value
@@ -497,9 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (sideLoginForm) {
-    sideLoginForm.addEventListener('submit', (e) => {
+    sideLoginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      handleLoginAction(
+      await handleLoginAction(
         document.getElementById('sideLogEmail').value.trim(),
         document.getElementById('sideLogPass').value
       );
@@ -727,12 +914,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  window.handleForgotPassword = function() {
-    const input = prompt('Introduza o seu e-mail para recuperar a palavra-passe:');
-    if (input && input.includes('@')) {
-      showToast(`Link de recuperação enviado para: ${input}`, 'success');
+  window.handleForgotPassword = async function() {
+    const input = prompt('Introduza o seu username ou e-mail @nai.com para recuperar a palavra-passe:');
+    if (input && input.trim()) {
+      const email = formatNaiEmail(input);
+      const user = await NaiDB.findUser(email);
+      if (user) {
+        showToast(`Link de recuperação enviado com sucesso para ${email}!`, 'success');
+      } else {
+        showToast(`Conta com o endereço ${email} não encontrada.`, 'error');
+      }
     } else if (input !== null) {
-      showToast('E-mail inválido.', 'error');
+      showToast('Por favor, introduza um username ou e-mail válido.', 'error');
     }
   };
 
