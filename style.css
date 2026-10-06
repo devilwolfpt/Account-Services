@@ -51,60 +51,123 @@ body:has(#sso-consent-banner) .auth-interactive-display {
 }
 
 /* ==========================================================================
-   SSO — ECRÃ DE AUTORIZAÇÃO (estilo Google)
+   SSO — ECRÃ DE AUTORIZAÇÃO (RÉPLICA 1:1 DO DESIGN DA CONTA / 900PX)
    ========================================================================== */
 .sso-auth-screen {
+  width: 100%;
   min-height: 100vh;
-  background: #f8f9fa;
+  background: var(--page-bg, #edf1f6);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   font-family: var(--font-family, 'Plus Jakarta Sans', system-ui, sans-serif);
+  position: relative;
+  z-index: 10;
 }
 
 .sso-auth-card {
-  background: #ffffff;
-  border-radius: 28px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06);
-  padding: 40px 40px 32px;
+  background: var(--card-bg, #ffffff);
+  border-radius: var(--radius-card, 22px);
+  box-shadow: 0 20px 50px -10px rgba(12, 28, 56, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
   width: 100%;
-  max-width: 420px;
+  max-width: 900px;
+  height: 505px;
+  display: flex;
 }
 
-/* Header — logo + nome */
-.sso-as-header {
+/* LADO ESCURO (44% - Idêntico ao Painel de Boas-Vindas) */
+.sso-dark-panel {
+  width: var(--dark-width, 44%);
+  height: 100%;
+  background: linear-gradient(175deg, var(--dark-navy-top, #020919) 0%, var(--dark-navy-bot, #041029) 100%);
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  padding: 32px 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sso-dark-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+}
+
+.sso-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sso-as-logo-wrap {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sso-as-logo-wrap svg {
+  width: 100%;
+  height: 100%;
+}
+.sso-brand-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+}
+
+.sso-dark-mid {
+  margin-top: auto;
+  margin-bottom: auto;
+  padding: 8px 0;
+}
+
+.sso-security-note {
+  font-size: 0.68rem;
+  color: #8da4be;
+  text-align: center;
+  padding-top: 4px;
+}
+
+/* LADO CLARO (56% - Conteúdo de Autorização) */
+.sso-white-panel {
+  width: var(--form-width, 56%);
+  height: 100%;
+  background: var(--card-bg, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 38px;
+}
+
+.sso-white-content {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App Header */
+.sso-app-header-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
-}
-.sso-as-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-.sso-as-name {
-  font-size: 17px;
-  font-weight: 700;
-  color: #111827;
-  letter-spacing: -0.02em;
-}
-
-/* App block */
-.sso-app-block {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .sso-app-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: #f0f0ff;
-  border: 1.5px solid #e0e0ff;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #edf5ff;
+  border: 1px solid #d4e7ff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,114 +178,42 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 12px;
 }
-.sso-app-title {
-  font-size: 20px;
+.sso-app-title-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sso-req-badge {
+  font-size: 0.62rem;
   font-weight: 700;
-  color: #111827;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.08em;
+  color: var(--highlight-blue, #0080ff);
+  margin-bottom: 2px;
 }
-.sso-app-title span {
-  color: #4f46e5;
-}
-
-/* Arrow row */
-.sso-arrow-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  opacity: 0.4;
-}
-.sso-arrow-line {
-  flex: 1;
-  height: 1px;
-  background: #e5e7eb;
-}
-
-/* Permissions */
-.sso-share-title {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 12px;
-}
-.sso-share-title strong { color: #111827; }
-
-.sso-permissions-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: #f9fafb;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 14px 16px;
-}
-.sso-permissions-list li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: #374151;
-}
-
-/* Social buttons */
-.sso-social-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.sso-btn-social {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
-  font-family: inherit;
-  border: 1.5px solid #e5e7eb;
-  background: #ffffff;
-  color: #374151;
-}
-.sso-btn-social:hover {
-  background: #f9fafb;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transform: translateY(-1px);
-}
-.sso-btn-social:active { transform: translateY(0); }
 
 /* Conta Ativa (se já logado) */
 .sso-active-account {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: #f0f4ff;
-  border: 1.5px solid #dbeafe;
-  border-radius: 14px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
+  gap: 10px;
+  background: var(--input-bg, #edf3f8);
+  border: 1px solid #dbe6f0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
 }
 .sso-account-avatar {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: var(--btn-main-gradient);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 0.85rem;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -237,98 +228,137 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   min-width: 0;
 }
 .sso-account-details strong {
-  font-size: 14px;
-  color: #1e293b;
+  font-size: 0.8rem;
+  color: #0c1523;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .sso-account-details span {
-  font-size: 12px;
-  color: #64748b;
+  font-size: 0.7rem;
+  color: #718294;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Ações do Consentimento */
-.sso-actions {
+/* Permissões */
+.sso-permissions-block {
+  margin-bottom: 16px;
+}
+.sso-share-heading {
+  font-size: 0.72rem;
+  color: #617387;
+  margin-bottom: 8px;
+}
+.sso-share-heading strong {
+  color: #0c1523;
+}
+.sso-permissions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 6px;
 }
-.sso-btn-allow {
+.sso-permissions-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: #2b394a;
+  background: #f7fafc;
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.perm-check-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px rgba(79,70,229,0.35);
+  font-size: 0.65rem;
+  font-weight: 800;
+  flex-shrink: 0;
 }
-.sso-btn-allow:hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79,70,229,0.4);
-}
-.sso-btn-allow:active { transform: translateY(0); }
 
-.sso-btn-cancel {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  font-size: 14px;
+/* Botões */
+.sso-buttons-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.sso-btn-cancel-flat {
+  background: none;
+  border: none;
+  color: #718294;
+  font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
   font-family: inherit;
-  padding: 12px;
-  border-radius: 12px;
-  text-align: center;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
 }
-.sso-btn-cancel:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+.sso-btn-cancel-flat:hover {
+  color: #0c1523;
+  background: #edf3f8;
 }
 
 .sso-switch-account-wrapper {
-  margin-bottom: 18px;
+  text-align: center;
+  margin-bottom: 6px;
 }
 .sso-btn-link {
   background: none;
   border: none;
-  color: #6366f1;
-  font-size: 13px;
+  color: var(--highlight-blue, #0080ff);
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
-  padding: 4px;
+  padding: 2px;
 }
 .sso-btn-link:hover {
-  color: #4338ca;
+  color: #0066cc;
 }
 
-/* Footer */
-.sso-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #f1f5f9;
+.sso-footer-line {
+  text-align: center;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  margin-top: 4px;
 }
-.sso-powered { font-size: 12px; color: #9ca3af; }
-.sso-powered strong { color: #6b7280; }
+.sso-footer-line strong {
+  color: #64748b;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .sso-auth-card {
+    flex-direction: column;
+    height: auto;
+    max-width: 440px;
+  }
+  .sso-dark-panel,
+  .sso-white-panel {
+    width: 100%;
+    height: auto;
+  }
+  .sso-dark-panel {
+    padding: 24px;
+  }
+  .sso-white-panel {
+    padding: 24px 20px;
+  }
+}
 
 :root {
   --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
