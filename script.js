@@ -16,9 +16,13 @@ function generateSSOToken(user) {
   const payload = {
     v: SSO_TOKEN_VERSION,
     name: user.name,
+    firstName: user.firstName || null,
+    lastName: user.lastName || null,
     email: user.email,
+    birthDate: user.birthDate || null,
+    gender: user.gender || null,
     picture: user.picture || null,
-    provider: user.provider || 'email',
+    provider: user.provider || 'nai',
     iat: Date.now(),
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 dias
   };
@@ -536,15 +540,26 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           const docId = normalizedEmail.replace(/[/.]/g, '_');
           const docRef = firestoreDb.collection('nai_accounts').doc(docId);
-          await docRef.set({
+          
+          const firestorePayload = {
             name: userToSave.name || '',
+            firstName: userToSave.firstName || '',
+            lastName: userToSave.lastName || '',
+            username: userToSave.username || (userToSave.email ? userToSave.email.split('@')[0] : ''),
+            domain: userToSave.domain || '@nai.com',
+            birthDate: userToSave.birthDate || '',
+            gender: userToSave.gender || '',
+            genderLabel: userToSave.genderLabel || '',
             email: userToSave.email,
             passwordHash: userToSave.passwordHash || '',
             provider: userToSave.provider || 'nai',
             picture: userToSave.picture || null,
+            createdAt: userToSave.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
-          }, { merge: true });
-          console.log('✅ Utilizador sincronizado na Nuvem Google Firestore:', normalizedEmail);
+          };
+
+          await docRef.set(firestorePayload, { merge: true });
+          console.log('✅ Utilizador completo sincronizado na Nuvem Google Firestore:', normalizedEmail, firestorePayload);
         } catch (err) {
           console.warn('Erro ao sincronizar com Google Firestore (armazenado no cofre local):', err);
         }
@@ -819,13 +834,17 @@ document.addEventListener('DOMContentLoaded', () => {
       let username = emailEl ? emailEl.value.trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '') : '';
       const officialEmail = `${username}@nai.com`;
 
+      const genderMap = { 'M': 'Masculino', 'F': 'Feminino', 'O': 'Personalizado', 'N': 'Prefiro não dizer' };
       const passHash = await hashPassword(pass);
       const newUser = {
         name: fullName,
         firstName: fName,
         lastName: lName,
+        username: username,
+        domain: '@nai.com',
         birthDate: birth,
         gender: gender,
+        genderLabel: genderMap[gender] || gender,
         email: officialEmail,
         passwordHash: passHash,
         provider: 'nai',
