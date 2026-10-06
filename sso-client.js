@@ -136,7 +136,12 @@
      */
     login: function () {
       const opts = this._options || {};
-      const loginUrl = new URL(SSO_ORIGIN);
+      const baseOrigin = opts.ssoOrigin || (
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? window.location.origin + '/auth.html'
+          : SSO_ORIGIN
+      );
+      const loginUrl = new URL(baseOrigin);
       loginUrl.searchParams.set('redirect_to', window.location.href.split('?')[0]);
       if (opts.appName)  loginUrl.searchParams.set('app_name', opts.appName);
       if (opts.appLogo)  loginUrl.searchParams.set('app_logo', opts.appLogo);

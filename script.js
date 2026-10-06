@@ -78,72 +78,105 @@ window.AccountServicesSSO = {
 document.addEventListener('DOMContentLoaded', () => {
 
   /* ==========================================================================
-     SSO — LEITURA DE PARÂMETROS E ECRÃ DE AUTORIZAÇÃO
+     SSO — LEITURA DE PARÂMETROS E FLUXO EM 2 PASSOS (CONSENTIMENTO -> LOGIN)
      ========================================================================== */
   const ssoParams = new URLSearchParams(window.location.search);
   const ssoRedirectTo = ssoParams.get('redirect_to');
   const ssoAppName   = ssoParams.get('app_name') || '';
   const ssoAppLogo   = ssoParams.get('app_logo') || '';
 
-  const ssoAuthScreen     = document.getElementById('ssoAuthScreen');
-  const interactiveDisplay = document.getElementById('interactiveDisplay');
-  const sideBySideDisplay  = document.getElementById('sideBySideDisplay');
+  const ssoAuthScreen          = document.getElementById('ssoAuthScreen');
+  const interactiveDisplay     = document.getElementById('interactiveDisplay');
+  const sideBySideDisplay      = document.getElementById('sideBySideDisplay');
+  const ssoAllowBtn            = document.getElementById('ssoAllowBtn');
+  const ssoAllowBtnText        = document.getElementById('ssoAllowBtnText');
+  const ssoCancelBtn           = document.getElementById('ssoCancelBtn');
+  const ssoActiveAccount       = document.getElementById('ssoActiveAccount');
+  const ssoActiveAvatar        = document.getElementById('ssoActiveAvatar');
+  const ssoActiveName          = document.getElementById('ssoActiveName');
+  const ssoActiveEmail         = document.getElementById('ssoActiveEmail');
+  const ssoSwitchAccountWrapper = document.getElementById('ssoSwitchAccountWrapper');
+  const ssoSwitchAccountBtn    = document.getElementById('ssoSwitchAccountBtn');
 
-  // Retoma sessão automática se já estiver autenticado
-  const existingSession = getSession();
-  if (existingSession && ssoRedirectTo) {
-    const token = localStorage.getItem(SSO_SESSION_KEY);
-    redirectToApp(ssoRedirectTo, token, existingSession);
-    return;
-  }
-
-  // Se veio de uma app externa — mostra o ecrã SSO estilo Google
+  // Se veio de uma app externa via SSO:
   if (ssoRedirectTo && ssoAuthScreen) {
-    // Oculta UI principal
+    // 1. Oculta a tela normal inicialmente (mostra primeiro o ecrã de consentimento)
     if (interactiveDisplay) interactiveDisplay.style.display = 'none';
     if (sideBySideDisplay)  sideBySideDisplay.style.display  = 'none';
 
-    // Mostra ecrã SSO
     ssoAuthScreen.style.display = 'flex';
 
-    // Preenche nome da app
+    // Preenche informações da app
     const nameEl1 = document.getElementById('ssoAppNameDisplay');
     const nameEl2 = document.getElementById('ssoShareAppName');
-    if (nameEl1) nameEl1.textContent = ssoAppName || 'Aplicação';
-    if (nameEl2) nameEl2.textContent = ssoAppName || 'Aplicação';
+    const appDisplayName = ssoAppName || 'Aplicação';
+    if (nameEl1) nameEl1.textContent = appDisplayName;
+    if (nameEl2) nameEl2.textContent = appDisplayName;
 
-    // Logo da app
     if (ssoAppLogo) {
       const iconEl = document.getElementById('ssoAppIcon');
-      if (iconEl) iconEl.innerHTML = `<img src="${ssoAppLogo}" alt="${ssoAppName}">`;
+      if (iconEl) iconEl.innerHTML = `<img src="${ssoAppLogo}" alt="${appDisplayName}">`;
     }
 
-    // Cancelar — volta à app sem token
-    const cancelBtn = document.getElementById('ssoCancelBtn');
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
+    // Verifica se já existe uma sessão ativa
+    const existingSession = getSession();
+
+    if (existingSession) {
+      // Já está autenticado: exibe a conta atual para consentimento rápido
+      if (ssoActiveAccount) ssoActiveAccount.style.display = 'flex';
+      if (ssoActiveName) ssoActiveName.textContent = existingSession.name || 'Utilizador';
+      if (ssoActiveEmail) ssoActiveEmail.textContent = existingSession.email || '';
+      if (ssoActiveAvatar) {
+        if (existingSession.picture) {
+          ssoActiveAvatar.innerHTML = `<img src="${existingSession.picture}" alt="${existingSession.name}">`;
+        } else {
+          ssoActiveAvatar.textContent = (existingSession.name || 'U').charAt(0).toUpperCase();
+        }
+      }
+      if (ssoAllowBtnText) ssoAllowBtnText.textContent = `Continuar como ${existingSession.name || 'Utilizador'}`;
+      if (ssoSwitchAccountWrapper) ssoSwitchAccountWrapper.style.display = 'block';
+
+      // Clicar em Permitir quando já tem sessão: autoriza e redireciona de imediato
+      if (ssoAllowBtn) {
+        ssoAllowBtn.addEventListener('click', () => {
+          showToast(`Acesso concedido a ${appDisplayName}! A redirecionar...`, 'success');
+          const token = localStorage.getItem(SSO_SESSION_KEY) || generateSSOToken(existingSession);
+          setTimeout(() => redirectToApp(ssoRedirectTo, token, existingSession), 800);
+        });
+      }
+
+      // Clicar em "Iniciar com outra conta": fecha o consentimento e abre a tela de login normal
+      if (ssoSwitchAccountBtn) {
+        ssoSwitchAccountBtn.addEventListener('click', () => {
+          ssoAuthScreen.style.display = 'none';
+          if (interactiveDisplay) interactiveDisplay.style.display = 'flex';
+          showToast(`Inicie sessão para autorizar ${appDisplayName}`, 'info');
+        });
+      }
+
+    } else {
+      // Não tem sessão ativa: o botão Permitir avança para a tela de login/criar conta normal!
+      if (ssoActiveAccount) ssoActiveAccount.style.display = 'none';
+      if (ssoSwitchAccountWrapper) ssoSwitchAccountWrapper.style.display = 'none';
+      if (ssoAllowBtnText) ssoAllowBtnText.textContent = 'Permitir acesso';
+
+      if (ssoAllowBtn) {
+        ssoAllowBtn.addEventListener('click', () => {
+          // Esconde ecrã de consentimento (Passo 1 concluído)
+          ssoAuthScreen.style.display = 'none';
+          // Revela a tela de login e criar conta normal (Passo 2)
+          if (interactiveDisplay) interactiveDisplay.style.display = 'flex';
+          showToast(`Acesso autorizado! Faça login ou crie conta para continuar para ${appDisplayName}`, 'info');
+        });
+      }
+    }
+
+    // Botão Cancelar: volta para trás
+    if (ssoCancelBtn) {
+      ssoCancelBtn.addEventListener('click', () => {
         window.history.back();
       });
     }
-
-    // Form email/password SSO
-    const ssoEmailForm = document.getElementById('ssoEmailForm');
-    if (ssoEmailForm) {
-      ssoEmailForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email    = document.getElementById('ssoEmail').value.trim();
-        const password = document.getElementById('ssoPassword').value;
-        handleLoginAction(email, password);
-      });
-    }
-
-    // Botão Google SSO
-    const ssoGoogleBtn = document.getElementById('ssoGoogleBtn');
-    if (ssoGoogleBtn) ssoGoogleBtn.addEventListener('click', () => triggerGoogleSignIn());
-
-    // Botão Microsoft SSO
-    const ssoMicrosoftBtn = document.getElementById('ssoMicrosoftBtn');
-    if (ssoMicrosoftBtn) ssoMicrosoftBtn.addEventListener('click', () => triggerMicrosoftSignIn());
   }
 
   // DOM Elements - Modo Desenvolvedor
