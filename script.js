@@ -79,11 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ==========================================================================
      SSO — LEITURA DE PARÂMETROS E FLUXO EM 2 PASSOS (CONSENTIMENTO -> LOGIN)
+     Suporta tanto Redirecionamento (redirect_to) como Popup (window.opener)
      ========================================================================== */
   const ssoParams = new URLSearchParams(window.location.search);
   const ssoRedirectTo = ssoParams.get('redirect_to');
   const ssoAppName   = ssoParams.get('app_name') || '';
   const ssoAppLogo   = ssoParams.get('app_logo') || '';
+  const isPopupMode  = Boolean(window.opener || ssoParams.get('sso_mode') === 'popup');
+  const isSSORequest = Boolean(ssoRedirectTo || isPopupMode);
 
   const ssoAuthScreen          = document.getElementById('ssoAuthScreen');
   const interactiveDisplay     = document.getElementById('interactiveDisplay');
@@ -98,8 +101,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const ssoSwitchAccountWrapper = document.getElementById('ssoSwitchAccountWrapper');
   const ssoSwitchAccountBtn    = document.getElementById('ssoSwitchAccountBtn');
 
-  // Se veio de uma app externa via SSO:
-  if (ssoRedirectTo && ssoAuthScreen) {
+  // Função para responder à aplicação externa (seja por popup ou por redirect)
+  function sendAuthToExternalApp(token, user) {
+    if (window.opener) {
+      try {
+        window.opener.postMessage({
+          type: 'ACCOUNT_SERVICES_SSO_SUCCESS',
+          token: token,
+          user: user
+        }, '*');
+      } catch (e) {
+        console.error('Erro postMessage opener:', e);
+      }
+      setTimeout(() => window.close(), 600);
+      return;
+    }
+    if (ssoRedirectTo) {
+      redirectToApp(ssoRedirectTo, token, user);
+    }
+  }
+
+  // Se veio de uma app externa via SSO (Redirect ou Popup):
+  if (isSSORequest && ssoAuthScreen) {
     // 1. Oculta a tela normal inicialmente (mostra primeiro o ecrã de consentimento)
     if (interactiveDisplay) interactiveDisplay.style.display = 'none';
     if (sideBySideDisplay)  sideBySideDisplay.style.display  = 'none';
@@ -136,12 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ssoAllowBtnText) ssoAllowBtnText.textContent = `Continuar como ${existingSession.name || 'Utilizador'}`;
       if (ssoSwitchAccountWrapper) ssoSwitchAccountWrapper.style.display = 'block';
 
-      // Clicar em Permitir quando já tem sessão: autoriza e redireciona de imediato
+      // Clicar em Permitir quando já tem sessão: autoriza e conclui de imediato
       if (ssoAllowBtn) {
         ssoAllowBtn.addEventListener('click', () => {
-          showToast(`Acesso concedido a ${appDisplayName}! A redirecionar...`, 'success');
+          showToast(`Acesso concedido a ${appDisplayName}! A ligar...`, 'success');
           const token = localStorage.getItem(SSO_SESSION_KEY) || generateSSOToken(existingSession);
-          setTimeout(() => redirectToApp(ssoRedirectTo, token, existingSession), 800);
+          setTimeout(() => sendAuthToExternalApp(token, existingSession), 700);
         });
       }
 
@@ -166,15 +189,22 @@ document.addEventListener('DOMContentLoaded', () => {
           ssoAuthScreen.style.display = 'none';
           // Revela a tela de login e criar conta normal (Passo 2)
           if (interactiveDisplay) interactiveDisplay.style.display = 'flex';
-          showToast(`Acesso autorizado! Faça login ou crie conta para continuar para ${appDisplayName}`, 'info');
+          showToast(`Acesso autorizado! Faça login ou crie conta para aceder a ${appDisplayName}`, 'info');
         });
       }
     }
 
-    // Botão Cancelar: volta para trás
+    // Botão Cancelar: fecha o popup ou volta para trás
     if (ssoCancelBtn) {
       ssoCancelBtn.addEventListener('click', () => {
-        window.history.back();
+        if (window.opener) {
+          try {
+            window.opener.postMessage({ type: 'ACCOUNT_SERVICES_SSO_CANCELLED' }, '*');
+          } catch (e) {}
+          window.close();
+        } else {
+          window.history.back();
+        }
       });
     }
   }
@@ -622,10 +652,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Guarda a sessão SSO
     const token = saveSession(user);
 
-    // Se veio de uma app externa via SSO, redireciona imediatamente
+    // Se aberto em modo Popup por uma app externa (estilo Google Sign-In Popup):
+    if (window.opener) {
+      showToast(`Autenticado! A ligar a ${ssoAppName || 'aplicação'}...`, 'success');
+      try {
+        window.opener.postMessage({
+          type: 'ACCOUNT_SERVICES_SSO_SUCCESS',
+          token: token,
+          user: user
+        }, '*');
+      } catch (e) {
+        console.error('Erro postMessage opener:', e);
+      }
+      setTimeout(() => window.close(), 800);
+      return;
+    }
+
+    // Se veio de uma app externa via SSO Redirect, redireciona imediatamente
     if (ssoRedirectTo) {
       showToast(`Sessão iniciada! A redirecionar para ${ssoAppName || 'a aplicação'}...`, 'success');
-      setTimeout(() => redirectToApp(ssoRedirectTo, token, user), 1200);
+      setTimeout(() => redirectToApp(ssoRedirectTo, token, user), 1000);
       return;
     }
 

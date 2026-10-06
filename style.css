@@ -1,74 +1,78 @@
-/* ==========================================================================
-   ACCOUNT SERVICES - AUTENTICAÇÃO
-   RÉPLICA 1:1 PIXEL-PERFECT DO DESIGN ORIGINAL
-   ========================================================================== */
+:root {
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Cores Exatas da Imagem */
+  --page-bg: #edf1f6;
+  --card-bg: #ffffff;
+  
+  /* Gradiente Azul-Marinho Profundo do Painel Escuro */
+  --dark-navy-top: #020919;
+  --dark-navy-bot: #041029;
+  
+  /* Inputs */
+  --input-bg: #edf3f8;
+  --input-icon-color: #4b5b6d;
+  --input-text-color: #0c1523;
+  --input-placeholder: #8796a6;
+  
+  /* Destaques Tipográficos */
+  --highlight-blue: #0084ff;
+  --highlight-cyan: #0084ff;
+  --highlight-purple: #6f3df7;
+  --testimonial-bg: #5e1ee5;
+  
+  /* Botões */
+  --btn-main-gradient: linear-gradient(90deg, #0080ff 0%, #6b2cf5 100%);
+  --btn-glow-border: #0099ff;
+  
+  /* Proporções Exatas da Imagem: 44% Escuro / 56% Claro */
+  --dark-width: 44%;
+  --form-width: 56%;
+  
+  /* Dimensões do Cartão - Compacto e Elegante */
+  --radius-card: 22px;
+  --radius-input: 13px;
+  --radius-pill: 9999px;
+  --radius-box: 16px;
+  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+}
 
-/* ==========================================================================
-   SSO — BANNER DE CONSENTIMENTO
-   Aparece no topo quando a página é acedida via ?redirect_to=
-   ========================================================================== */
-#sso-consent-banner {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 9999;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  color: #fff;
-  padding: 12px 24px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
-.sso-banner-inner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-.sso-app-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  object-fit: contain;
-  background: #fff;
-  padding: 3px;
-}
-.sso-banner-text {
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--page-bg);
+  color: #0c1523;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-}
-.sso-banner-text strong {
-  font-size: 14px;
-  color: #a78bfa;
-}
-.sso-banner-text span {
-  color: #94a3b8;
-}
-/* Empurra o conteúdo para baixo do banner */
-body:has(#sso-consent-banner) .auth-page-wrapper,
-body:has(#sso-consent-banner) .auth-interactive-display {
-  padding-top: 56px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-x: hidden;
 }
 
 /* ==========================================================================
-   SSO — ECRÃ DE AUTORIZAÇÃO (RÉPLICA 1:1 DO DESIGN DA CONTA / 900PX)
+   SSO — ECRÃ DE AUTORIZAÇÃO (MESMA LARGURA DE 900PX E ESTILO DO RESTO)
    ========================================================================== */
 .sso-auth-screen {
   width: 100%;
-  min-height: 100vh;
-  background: var(--page-bg, #edf1f6);
+  max-width: 900px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  font-family: var(--font-family, 'Plus Jakarta Sans', system-ui, sans-serif);
   position: relative;
   z-index: 10;
+  animation: fadeIn 0.3s ease;
 }
 
 .sso-auth-card {
-  background: var(--card-bg, #ffffff);
-  border-radius: var(--radius-card, 22px);
+  background: #ffffff;
+  border-radius: var(--radius-card);
   box-shadow: 0 20px 50px -10px rgba(12, 28, 56, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
   position: relative;
   overflow: hidden;
@@ -80,15 +84,16 @@ body:has(#sso-consent-banner) .auth-interactive-display {
 
 /* LADO ESCURO (44% - Idêntico ao Painel de Boas-Vindas) */
 .sso-dark-panel {
-  width: var(--dark-width, 44%);
+  width: var(--dark-width);
   height: 100%;
-  background: linear-gradient(175deg, var(--dark-navy-top, #020919) 0%, var(--dark-navy-bot, #041029) 100%);
+  background: linear-gradient(175deg, #020919 0%, #041029 100%) !important;
   color: #ffffff;
   position: relative;
   overflow: hidden;
-  padding: 32px 30px;
+  padding: 38px 34px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
 }
 
 .sso-dark-content {
@@ -106,8 +111,8 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   gap: 10px;
 }
 .sso-as-logo-wrap {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,7 +123,7 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   height: 100%;
 }
 .sso-brand-title {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: -0.01em;
   color: #ffffff;
@@ -127,25 +132,39 @@ body:has(#sso-consent-banner) .auth-interactive-display {
 .sso-dark-mid {
   margin-top: auto;
   margin-bottom: auto;
-  padding: 8px 0;
+  padding: 12px 0;
+}
+.sso-dark-mid .hero-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+  color: #ffffff;
+}
+.sso-dark-mid .hero-desc {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #9cb1c9;
 }
 
 .sso-security-note {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: #8da4be;
-  text-align: center;
-  padding-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* LADO CLARO (56% - Conteúdo de Autorização) */
 .sso-white-panel {
-  width: var(--form-width, 56%);
+  width: var(--form-width);
   height: 100%;
-  background: var(--card-bg, #ffffff);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 38px;
+  padding: 28px 44px;
 }
 
 .sso-white-content {
@@ -160,7 +179,7 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .sso-app-icon {
   width: 44px;
@@ -185,10 +204,10 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   min-width: 0;
 }
 .sso-req-badge {
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--highlight-blue, #0080ff);
+  color: var(--highlight-blue);
   margin-bottom: 2px;
 }
 
@@ -197,7 +216,7 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--input-bg, #edf3f8);
+  background: var(--input-bg);
   border: 1px solid #dbe6f0;
   border-radius: 12px;
   padding: 8px 12px;
@@ -247,9 +266,10 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   margin-bottom: 16px;
 }
 .sso-share-heading {
-  font-size: 0.72rem;
-  color: #617387;
+  font-size: 0.75rem;
+  color: #55687d;
   margin-bottom: 8px;
+  line-height: 1.4;
 }
 .sso-share-heading strong {
   color: #0c1523;
@@ -266,12 +286,12 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #2b394a;
-  background: #f7fafc;
+  background: #f8fafc;
   border: 1px solid #edf2f7;
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 7px 10px;
 }
 .perm-check-icon {
   width: 16px;
@@ -294,15 +314,16 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;
+  width: 100%;
 }
 .sso-btn-cancel-flat {
   background: none;
   border: none;
   color: #718294;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
   font-family: inherit;
   transition: all 0.15s ease;
@@ -319,8 +340,8 @@ body:has(#sso-consent-banner) .auth-interactive-display {
 .sso-btn-link {
   background: none;
   border: none;
-  color: var(--highlight-blue, #0080ff);
-  font-size: 0.72rem;
+  color: var(--highlight-blue);
+  font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
@@ -332,7 +353,7 @@ body:has(#sso-consent-banner) .auth-interactive-display {
 
 .sso-footer-line {
   text-align: center;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   color: #94a3b8;
   margin-top: 4px;
 }
@@ -340,8 +361,8 @@ body:has(#sso-consent-banner) .auth-interactive-display {
   color: #64748b;
 }
 
-/* Mobile */
-@media (max-width: 768px) {
+/* Responsividade suave para ecrãs muito pequenos */
+@media (max-width: 600px) {
   .sso-auth-card {
     flex-direction: column;
     height: auto;
@@ -353,56 +374,11 @@ body:has(#sso-consent-banner) .auth-interactive-display {
     height: auto;
   }
   .sso-dark-panel {
-    padding: 24px;
+    padding: 26px 20px;
   }
   .sso-white-panel {
-    padding: 24px 20px;
+    padding: 26px 20px;
   }
-}
-
-:root {
-  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
-  /* Cores Exatas da Imagem */
-  --page-bg: #edf1f6;
-  --card-bg: #ffffff;
-  
-  /* Gradiente Azul-Marinho Profundo do Painel Escuro */
-  --dark-navy-top: #020919;
-  --dark-navy-bot: #041029;
-  
-  /* Inputs */
-  --input-bg: #edf3f8;
-  --input-icon-color: #4b5b6d;
-  --input-text-color: #0c1523;
-  --input-placeholder: #8796a6;
-  
-  /* Destaques Tipográficos */
-  --highlight-blue: #0084ff;
-  --highlight-cyan: #0084ff;
-  --highlight-purple: #6f3df7;
-  --testimonial-bg: #5e1ee5;
-  
-  /* Botões */
-  --btn-main-gradient: linear-gradient(90deg, #0080ff 0%, #6b2cf5 100%);
-  --btn-glow-border: #0099ff;
-  
-  /* Proporções Exatas da Imagem: 44% Escuro / 56% Claro */
-  --dark-width: 44%;
-  --form-width: 56%;
-  
-  /* Dimensões do Cartão - Compacto e Elegante */
-  --radius-card: 22px;
-  --radius-input: 13px;
-  --radius-pill: 9999px;
-  --radius-box: 16px;
-  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {

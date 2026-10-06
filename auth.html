@@ -11,7 +11,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <!-- Microsoft Authentication Library (MSAL.js) -->
   <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" async defer></script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 <body class="mode-user-production">
 
@@ -49,8 +49,8 @@
   <div id="toastContainer" class="toast-container"></div>
 
   <!-- =========================================================================
-       SSO — ECRÃ DE AUTORIZAÇÃO (estilo Google)
-       Mostrado apenas quando ?redirect_to= está presente no URL
+       SSO — ECRÃ DE AUTORIZAÇÃO (MESMO ESTILO E LARGURA DE 900PX DO RESTO)
+       Mostrado apenas quando ?redirect_to= ou sso_mode está presente no URL
        ========================================================================= -->
   <div class="sso-auth-screen" id="ssoAuthScreen" style="display:none;">
     <div class="sso-auth-card" id="ssoConsentCard">
@@ -76,19 +76,14 @@
           </div>
 
           <div class="sso-dark-mid">
-            <h2 class="hero-title" style="font-size: 1.85rem; margin-bottom: 8px;">Autorização<br>de Acesso</h2>
-            <p class="hero-desc" style="font-size: 0.8rem; line-height: 1.5; color: #a0b3c6;">
-              O serviço único de identidade para aceder a todas as suas aplicações com rapidez e total privacidade.
+            <h2 class="hero-title">Autorização<br>de Acesso</h2>
+            <p class="hero-desc">
+              Inicie sessão com o seu perfil único para aceder a aplicações externas com total privacidade e rapidez.
             </p>
           </div>
 
-          <div class="testimonial-box" style="margin-top: auto; margin-bottom: 8px;">
-            <p class="testimonial-text" style="font-size: 0.73rem; line-height: 1.45;">
-              "A sua palavra-passe e dados confidenciais nunca são partilhados com as aplicações."
-            </p>
-          </div>
           <div class="sso-security-note">
-            <span>🔒 Ligação Segura Account Services</span>
+            <span>🔒 Ligação Segura · Account Services</span>
           </div>
         </div>
       </div>
