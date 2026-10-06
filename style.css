@@ -1155,7 +1155,105 @@ body {
   text-align: right;
   font-size: 0.7rem;
   color: #718294;
-  margin: 8px 0 14px 0;
+  margin: 6px 0 10px 0;
+}
+
+/* ==========================================================================
+   FORMULÁRIO MULTI-ETAPAS (4 PASSOS: DADOS, PESSOAIS, @NAI.COM, SENHA)
+   ========================================================================== */
+.register-step-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: stepFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes stepFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.input-box select, .custom-input-box select {
+  width: 100%;
+  height: 46px;
+  background: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: var(--radius-input);
+  padding: 0 40px 0 44px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--input-text-color);
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.input-box select:focus, .custom-input-box select:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #bcd5f5;
+  box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.12);
+}
+
+.input-box input[type="date"], .custom-input-box input[type="date"] {
+  color: var(--input-text-color);
+  font-family: inherit;
+}
+
+/* Sufixo Exclusivo e Fixo @nai.com */
+.email-with-suffix-box input, .custom-input-box.email-with-suffix-box input {
+  padding-right: 96px !important;
+}
+
+.email-domain-tag {
+  position: absolute;
+  right: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--highlight-blue);
+  background: rgba(0, 128, 255, 0.08);
+  padding: 4px 8px;
+  border-radius: 8px;
+  user-select: none;
+  pointer-events: none;
+  letter-spacing: -0.01em;
+}
+
+.field-hint-text {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin: 2px 0 2px 4px;
+  text-align: left;
+}
+
+.stepper-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0 8px 0;
+  min-height: 24px;
+}
+
+.btn-step-prev {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.73rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-step-prev:hover {
+  color: var(--highlight-blue);
 }
 
 .link-action {

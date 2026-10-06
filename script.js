@@ -342,27 +342,81 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ==========================================================================
-     4. STEPPER CONTROLLER
+     4. STEPPER CONTROLLER — 4 PASSOS REAIS DE REGISTO
      ========================================================================== */
+  function setRegisterStep(step) {
+    if (step < 1 || step > totalSteps) return;
+    currentStep = step;
+
+    // Atualiza badges em todas as barras de passos
+    stepperBars.forEach(bar => {
+      const steps = bar.querySelectorAll('.step-col');
+      steps.forEach(s => {
+        const num = parseInt(s.getAttribute('data-step'), 10);
+        s.classList.toggle('active', num === currentStep);
+      });
+    });
+
+    // Atualiza panes no formulário deslizante
+    for (let i = 1; i <= 4; i++) {
+      const pane = document.getElementById(`sliderPaneStep${i}`);
+      if (pane) pane.style.display = (i === currentStep) ? 'flex' : 'none';
+    }
+
+    // Atualiza panes no formulário lado a lado
+    for (let i = 1; i <= 4; i++) {
+      const pane = document.getElementById(`sidePaneStep${i}`);
+      if (pane) pane.style.display = (i === currentStep) ? 'flex' : 'none';
+    }
+
+    // Botões Anterior
+    const btnSliderPrev = document.getElementById('btnSliderRegPrev');
+    const btnSidePrev = document.getElementById('btnSideRegPrev');
+    if (btnSliderPrev) btnSliderPrev.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+    if (btnSidePrev) btnSidePrev.style.display = currentStep > 1 ? 'inline-flex' : 'none';
+
+    // Texto do Botão Submeter
+    if (btnSliderRegSubmit) {
+      const label = btnSliderRegSubmit.querySelector('span');
+      if (label) label.textContent = currentStep === totalSteps ? 'CRIAR CONTA' : 'SEGUINTE';
+    }
+    const btnSideRegSubmit = document.getElementById('btnSideRegSubmit');
+    if (btnSideRegSubmit) {
+      const label = btnSideRegSubmit.querySelector('span');
+      if (label) label.textContent = currentStep === totalSteps ? 'CRIAR CONTA' : 'SEGUINTE';
+    }
+  }
+
+  // Navegação ao clicar nos badges das barras (para passos anteriores já alcançados)
   stepperBars.forEach(bar => {
     const steps = bar.querySelectorAll('.step-col');
     steps.forEach(step => {
       step.addEventListener('click', () => {
         const stepNum = parseInt(step.getAttribute('data-step'), 10);
-        steps.forEach(s => s.classList.remove('active'));
-        step.classList.add('active');
-        currentStep = stepNum;
-        updateStepperButtonText();
+        if (stepNum < currentStep) {
+          setRegisterStep(stepNum);
+        }
       });
     });
   });
 
-  function updateStepperButtonText() {
-    if (btnSliderRegSubmit) {
-      const label = btnSliderRegSubmit.querySelector('span');
-      if (label) label.textContent = currentStep === totalSteps ? 'CRIAR CONTA' : 'SEGUINTE';
-    }
+  // Botões de Voltar (Anterior)
+  const btnSliderRegPrev = document.getElementById('btnSliderRegPrev');
+  if (btnSliderRegPrev) {
+    btnSliderRegPrev.addEventListener('click', () => {
+      if (currentStep > 1) setRegisterStep(currentStep - 1);
+    });
   }
+
+  const btnSideRegPrev = document.getElementById('btnSideRegPrev');
+  if (btnSideRegPrev) {
+    btnSideRegPrev.addEventListener('click', () => {
+      if (currentStep > 1) setRegisterStep(currentStep - 1);
+    });
+  }
+
+  // Inicializa o formulário de criação de conta no Passo 1
+  setRegisterStep(1);
 
   /* ==========================================================================
      5. MOTOR DE BASE DE DADOS NAI & DOMÍNIO @NAI.COM
@@ -620,63 +674,170 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
-     6. SUBMISSÃO DE FORMULÁRIOS COM REGRA ESTRITA @NAI.COM
+     6. BLOQUEIO ESTRITO DE DOMÍNIO — DEPOIS DO @ SÓ PODE SER NAI.COM
      ========================================================================== */
-  async function handleRegisterAction(name, rawEmailOrUser, password) {
-    if (!name) {
-      showToast('Por favor, introduza o seu nome completo.', 'error');
-      return false;
+  function setupStrictNaiEmailInput(inputId, previewId) {
+    const inputEl = document.getElementById(inputId);
+    const previewEl = document.getElementById(previewId);
+    if (!inputEl) return;
+
+    // Impede o utilizador de carregar na tecla @
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === '@') {
+        e.preventDefault();
+        showToast('O domínio @nai.com já é fixo e exclusivo! Digite apenas o nome de utilizador.', 'info');
+      }
+    });
+
+    // Sanitização em tempo real (colar texto, auto-preenchimento, etc.)
+    inputEl.addEventListener('input', () => {
+      let val = inputEl.value;
+      if (val.includes('@')) {
+        val = val.split('@')[0];
+        showToast('Domínio externo recusado! O domínio @nai.com é fixo e automático.', 'error');
+      }
+      val = val.replace(/[^a-zA-Z0-9._-]/g, '').toLowerCase();
+      inputEl.value = val;
+      if (previewEl) {
+        previewEl.textContent = (val || 'utilizador') + '@nai.com';
+      }
+    });
+  }
+
+  setupStrictNaiEmailInput('sliderRegEmail', 'sliderRegEmailPreview');
+  setupStrictNaiEmailInput('sideRegEmail', 'sideRegEmailPreview');
+
+  /* ==========================================================================
+     7. CONTROLADOR DO FLUXO DOS 4 PASSOS DE CRIAR CONTA
+     - Passo 1 (Dados): Primeiro Nome + Apelido
+     - Passo 2 (Pessoais): Data de Nascimento + Género
+     - Passo 3 (E-mail): Endereço exclusivo @nai.com (verificação na base de dados)
+     - Passo 4 (Senha): Palavra-passe + Confirmação
+     ========================================================================== */
+  async function handleRegisterStepSubmission(mode = 'slider') {
+    const prefix = mode === 'slider' ? 'sliderReg' : 'sideReg';
+
+    // Obter elementos dos passos
+    const firstNameEl = document.getElementById(`${prefix}FirstName`);
+    const lastNameEl  = document.getElementById(`${prefix}LastName`);
+    const birthEl     = document.getElementById(`${prefix}Birth`);
+    const genderEl    = document.getElementById(`${prefix}Gender`);
+    const emailEl     = document.getElementById(`${prefix}Email`);
+    const passEl      = document.getElementById(`${prefix}Pass`);
+    const passConfEl  = document.getElementById(`${prefix}PassConfirm`);
+
+    // --- VALIDAÇÃO PASSO 1: DADOS ---
+    if (currentStep === 1) {
+      const fName = firstNameEl ? firstNameEl.value.trim() : '';
+      const lName = lastNameEl ? lastNameEl.value.trim() : '';
+      if (!fName || fName.length < 2) {
+        showToast('Por favor, introduza o seu primeiro nome.', 'error');
+        if (firstNameEl) firstNameEl.focus();
+        return;
+      }
+      if (!lName || lName.length < 2) {
+        showToast('Por favor, introduza o seu apelido / sobrenome.', 'error');
+        if (lastNameEl) lastNameEl.focus();
+        return;
+      }
+      setRegisterStep(2);
+      showToast('Dados guardados. Passo 2: Informações Pessoais.', 'info');
+      return;
     }
 
-    // REGRA OBRIGATÓRIA: Validação rigorosa do domínio @nai.com
-    const emailValidation = validateStrictNaiEmail(rawEmailOrUser);
-    if (!emailValidation.valid) {
-      showToast(emailValidation.error, 'error');
-      return false;
-    }
-    const assignedEmail = emailValidation.email;
-
-    if (!password || password.length < 6) {
-      showToast('A palavra-passe deve ter pelo menos 6 caracteres.', 'error');
-      return false;
-    }
-
-    if (currentStep < totalSteps) {
-      currentStep++;
-      stepperBars.forEach(bar => {
-        const steps = bar.querySelectorAll('.step-col');
-        steps.forEach(s => {
-          const num = parseInt(s.getAttribute('data-step'), 10);
-          s.classList.toggle('active', num === currentStep);
-        });
-      });
-      updateStepperButtonText();
-      showToast(`Passo ${currentStep} ativado.`, 'info');
-      return true;
+    // --- VALIDAÇÃO PASSO 2: PESSOAIS ---
+    if (currentStep === 2) {
+      const birth = birthEl ? birthEl.value : '';
+      const gender = genderEl ? genderEl.value : '';
+      if (!birth) {
+        showToast('Por favor, introduza a sua data de nascimento.', 'error');
+        if (birthEl) birthEl.focus();
+        return;
+      }
+      if (!gender) {
+        showToast('Por favor, selecione o seu género.', 'error');
+        if (genderEl) genderEl.focus();
+        return;
+      }
+      setRegisterStep(3);
+      showToast('Informações registadas. Passo 3: Escolha o seu endereço @nai.com.', 'info');
+      return;
     }
 
-    // Verificar se já existe uma conta com este e-mail
-    const existing = await NaiDB.findUser(assignedEmail);
-    if (existing) {
-      showToast(`O endereço ${assignedEmail} já se encontra registado. Inicie sessão!`, 'error');
-      return false;
+    // --- VALIDAÇÃO PASSO 3: E-MAIL EXCLUSIVO @NAI.COM ---
+    if (currentStep === 3) {
+      let username = emailEl ? emailEl.value.trim().toLowerCase() : '';
+      if (username.includes('@')) {
+        username = username.split('@')[0];
+      }
+      username = username.replace(/[^a-z0-9._-]/g, '');
+
+      if (!username || username.length < 3) {
+        showToast('O nome de utilizador para o seu e-mail @nai.com tem de ter pelo menos 3 caracteres.', 'error');
+        if (emailEl) emailEl.focus();
+        return;
+      }
+
+      const officialEmail = `${username}@nai.com`;
+
+      // Verificar se já existe na base de dados (Firestore / Local)
+      const existing = await NaiDB.findUser(officialEmail);
+      if (existing) {
+        showToast(`O e-mail ${officialEmail} já está em uso! Por favor escolha outro.`, 'error');
+        if (emailEl) emailEl.focus();
+        return;
+      }
+
+      setRegisterStep(4);
+      showToast(`Endereço ${officialEmail} disponível! Passo 4: Defina a sua palavra-passe.`, 'success');
+      return;
     }
 
-    const passHash = await hashPassword(password);
-    const newUser = {
-      name,
-      email: assignedEmail,
-      passwordHash: passHash,
-      provider: 'nai',
-      createdAt: new Date().toISOString()
-    };
+    // --- VALIDAÇÃO PASSO 4: SENHA & CRIAÇÃO DA CONTA ---
+    if (currentStep === 4) {
+      const pass = passEl ? passEl.value : '';
+      const passConf = passConfEl ? passConfEl.value : '';
 
-    await NaiDB.saveUser(newUser);
-    showToast(`Conta criada com sucesso! O seu e-mail oficial é ${assignedEmail}`, 'success');
+      if (!pass || pass.length < 6) {
+        showToast('A palavra-passe deve ter pelo menos 6 caracteres.', 'error');
+        if (passEl) passEl.focus();
+        return;
+      }
 
-    window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
-    openSession(newUser);
-    return true;
+      if (pass !== passConf) {
+        showToast('As palavras-passe não coincidem. Confirme a sua palavra-passe.', 'error');
+        if (passConfEl) passConfEl.focus();
+        return;
+      }
+
+      // Reúne todos os dados validados dos 4 passos
+      const fName = firstNameEl ? firstNameEl.value.trim() : 'Utilizador';
+      const lName = lastNameEl ? lastNameEl.value.trim() : '';
+      const fullName = `${fName} ${lName}`.trim();
+      const birth = birthEl ? birthEl.value : '';
+      const gender = genderEl ? genderEl.value : '';
+      let username = emailEl ? emailEl.value.trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '') : '';
+      const officialEmail = `${username}@nai.com`;
+
+      const passHash = await hashPassword(pass);
+      const newUser = {
+        name: fullName,
+        firstName: fName,
+        lastName: lName,
+        birthDate: birth,
+        gender: gender,
+        email: officialEmail,
+        passwordHash: passHash,
+        provider: 'nai',
+        createdAt: new Date().toISOString()
+      };
+
+      await NaiDB.saveUser(newUser);
+      showToast(`Conta criada com sucesso! Bem-vindo, ${fName}! O seu e-mail é ${officialEmail}`, 'success');
+
+      window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
+      openSession(newUser);
+    }
   }
 
   async function handleLoginAction(emailOrUsername, password) {
@@ -704,11 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sliderRegisterForm) {
     sliderRegisterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      await handleRegisterAction(
-        document.getElementById('sliderRegName').value.trim(),
-        document.getElementById('sliderRegEmail').value.trim(),
-        document.getElementById('sliderRegPass').value
-      );
+      await handleRegisterStepSubmission('slider');
     });
   }
 
@@ -726,11 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sideRegisterForm) {
     sideRegisterForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      await handleRegisterAction(
-        document.getElementById('sideRegName').value.trim(),
-        document.getElementById('sideRegEmail').value.trim(),
-        document.getElementById('sideRegPass').value
-      );
+      await handleRegisterStepSubmission('side');
     });
   }
 
@@ -743,18 +896,6 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     });
   }
-
-  // Validação em tempo real ao sair do campo de e-mail de registo
-  ['sliderRegEmail', 'sideRegEmail'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('blur', () => {
-      const val = el.value.trim().toLowerCase();
-      if (val && val.includes('@') && !val.endsWith('@nai.com')) {
-        showToast('Domínio recusado! Só é permitido o domínio @nai.com (ex: utilizador@nai.com).', 'error');
-      }
-    });
-  });
 
   /* ==========================================================================
      7. INTEGRAÇÃO LOGIN COM O GOOGLE (GOOGLE SIGN-IN)
