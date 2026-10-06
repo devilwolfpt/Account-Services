@@ -570,20 +570,71 @@ document.addEventListener('DOMContentLoaded', () => {
   window.NaiDB = NaiDB;
   window.formatNaiEmail = formatNaiEmail;
 
+  /**
+   * REGRA OBRIGATÓRIA: Todas as contas criadas têm de pertencer exclusivamente ao domínio @nai.com.
+   * Não é permitida a criação com nenhum outro domínio externo (ex: @gmail.com, @hotmail.com, @sapo.pt, etc.).
+   */
+  function validateStrictNaiEmail(rawInput) {
+    if (!rawInput || !rawInput.trim()) {
+      return {
+        valid: false,
+        error: 'Por favor, introduza o seu nome de utilizador ou e-mail @nai.com.'
+      };
+    }
+
+    const trimmed = rawInput.trim().toLowerCase();
+
+    // Se o utilizador colocou um endereço com '@':
+    if (trimmed.includes('@')) {
+      if (!trimmed.endsWith('@nai.com')) {
+        return {
+          valid: false,
+          error: 'Domínio recusado! Todas as contas criadas têm de ter obrigatoriamente o domínio @nai.com (ex.: utilizador@nai.com).'
+        };
+      }
+      const userPart = trimmed.slice(0, -8); // remove '@nai.com'
+      if (!userPart || userPart.length < 3) {
+        return {
+          valid: false,
+          error: 'O nome de utilizador antes de @nai.com tem de ter pelo menos 3 caracteres.'
+        };
+      }
+      if (!/^[a-z0-9._-]+$/.test(userPart)) {
+        return {
+          valid: false,
+          error: 'O e-mail @nai.com só pode conter letras, números, pontos e hífens.'
+        };
+      }
+      return { valid: true, email: trimmed };
+    }
+
+    // Se o utilizador introduziu apenas o username (sem '@'):
+    const cleanUser = trimmed.replace(/[^a-z0-9._-]/g, '');
+    if (!cleanUser || cleanUser.length < 3) {
+      return {
+        valid: false,
+        error: 'O nome de utilizador para a sua conta @nai.com tem de ter pelo menos 3 caracteres.'
+      };
+    }
+    return { valid: true, email: `${cleanUser}@nai.com` };
+  }
+
   /* ==========================================================================
-     6. SUBMISSÃO DE FORMULÁRIOS COM SUPORTE A @NAI.COM
+     6. SUBMISSÃO DE FORMULÁRIOS COM REGRA ESTRITA @NAI.COM
      ========================================================================== */
   async function handleRegisterAction(name, rawEmailOrUser, password) {
     if (!name) {
       showToast('Por favor, introduza o seu nome completo.', 'error');
       return false;
     }
-    if (!rawEmailOrUser) {
-      showToast('Por favor, introduza um username ou e-mail.', 'error');
+
+    // REGRA OBRIGATÓRIA: Validação rigorosa do domínio @nai.com
+    const emailValidation = validateStrictNaiEmail(rawEmailOrUser);
+    if (!emailValidation.valid) {
+      showToast(emailValidation.error, 'error');
       return false;
     }
-
-    const assignedEmail = formatNaiEmail(rawEmailOrUser);
+    const assignedEmail = emailValidation.email;
 
     if (!password || password.length < 6) {
       showToast('A palavra-passe deve ter pelo menos 6 caracteres.', 'error');
@@ -621,7 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     await NaiDB.saveUser(newUser);
-    showToast(`Conta criada com sucesso! O seu e-mail é ${assignedEmail}`, 'success');
+    showToast(`Conta criada com sucesso! O seu e-mail oficial é ${assignedEmail}`, 'success');
 
     window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
     openSession(newUser);
@@ -692,6 +743,18 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     });
   }
+
+  // Validação em tempo real ao sair do campo de e-mail de registo
+  ['sliderRegEmail', 'sideRegEmail'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('blur', () => {
+      const val = el.value.trim().toLowerCase();
+      if (val && val.includes('@') && !val.endsWith('@nai.com')) {
+        showToast('Domínio recusado! Só é permitido o domínio @nai.com (ex: utilizador@nai.com).', 'error');
+      }
+    });
+  });
 
   /* ==========================================================================
      7. INTEGRAÇÃO LOGIN COM O GOOGLE (GOOGLE SIGN-IN)
