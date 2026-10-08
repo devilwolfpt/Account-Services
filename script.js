@@ -1069,18 +1069,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnMicrosoftLoginSide) btnMicrosoftLoginSide.addEventListener('click', triggerMicrosoftSignIn);
 
   /* ==========================================================================
-     9. MODAL DE SESSÃO & HELPERS
+     9. SESSÃO — ENTRA NA CONTA NO DASHBOARD
      ========================================================================== */
-  const sessionModal = document.getElementById('sessionModal');
-  const modalBadge = document.getElementById('modalBadge');
-  const modalUserName = document.getElementById('modalUserName');
-  const modalUserEmail = document.getElementById('modalUserEmail');
-  const modalUserAvatar = document.getElementById('modalUserAvatar');
-  const modalProviderInfo = document.getElementById('modalProviderInfo');
-  const modalCloseBtn = document.getElementById('modalCloseBtn');
+  // Dashboard do Account Services (pasta intro/) — aberto depois do login
+  // ou da criação de conta, com a sessão do utilizador activa.
+  const DASHBOARD_PAGE = 'intro/personal-info.html';
 
   function openSession(user) {
-    // Guarda a sessão SSO
+    // Guarda a sessão SSO (a mesma chave que o dashboard lê)
     const token = saveSession(user);
 
     // Se aberto em modo Popup por uma app externa (estilo Google Sign-In Popup):
@@ -1106,37 +1102,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Modo normal — mostra modal de confirmação
-    if (!sessionModal) return;
-    modalUserName.textContent = user.name || 'Utilizador';
-    modalUserEmail.textContent = user.email;
-
-    if (user.provider === 'google') {
-      if (modalBadge) modalBadge.textContent = '✓ Autenticado via Google';
-      if (modalProviderInfo) modalProviderInfo.innerHTML = '<p>Sessão iniciada através da sua <strong>Conta Google</strong>!</p>';
-    } else if (user.provider === 'microsoft') {
-      if (modalBadge) modalBadge.textContent = '✓ Autenticado via Microsoft';
-      if (modalProviderInfo) modalProviderInfo.innerHTML = '<p>Sessão iniciada através da sua <strong>Conta Microsoft</strong>!</p>';
-    } else {
-      if (modalBadge) modalBadge.textContent = '✓ Autenticado com Sucesso';
-      if (modalProviderInfo) modalProviderInfo.innerHTML = '<p>Autenticação concluída com sucesso!</p>';
-    }
-
-    if (user.picture) {
-      modalUserAvatar.innerHTML = `<img src="${user.picture}" alt="${user.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-    } else if (user.provider === 'microsoft') {
-      modalUserAvatar.innerHTML = `
-        <svg viewBox="0 0 21 21" width="30" height="30">
-          <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-          <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-          <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-          <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-        </svg>`;
-    } else {
-      modalUserAvatar.textContent = (user.name ? user.name.charAt(0) : 'U').toUpperCase();
-    }
-
-    sessionModal.classList.add('active');
+    // Modo normal — conta aberta: mostra o aviso e entra no dashboard
+    const nome = user.name || user.email || 'a sua conta';
+    showToast(`Sessão iniciada como ${nome} — a abrir a sua conta…`, 'success');
+    setTimeout(() => {
+      window.location.href = DASHBOARD_PAGE;
+    }, 900);
   }
 
   // Logout global
