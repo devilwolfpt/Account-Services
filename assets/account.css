@@ -1,0 +1,31 @@
+/* ==========================================================================
+   account.css — adições locais do Account Services
+   Estilos mínimos para mostrar a conta do utilizador no cabeçalho.
+   ========================================================================== */
+
+.as-header-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.as-header-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #0b57d0;
+  color: #fff;
+  font: 500 16px/1 Roboto, Arial, sans-serif;
+  overflow: hidden;
+  flex: none;
+}
+
+.as-header-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
