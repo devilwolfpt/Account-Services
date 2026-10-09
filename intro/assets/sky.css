@@ -1,0 +1,132 @@
+/* ============================================================
+   Céu estrelado — fundo das páginas do dashboard (intro/).
+   Fundo tipo Via Láctea: uma faixa nebular multicolor
+   (milkyway.svg, com estrelas dentro) e um campo de estrelas em
+   parallax, com movimento lento e fluido. O cabeçalho (#gb) e a
+   barra lateral ficam transparentes para o céu aparecer; os
+   cartões de conteúdo são painéis de vidro por cima.
+
+   O movimento é feito com transform (composto pela GPU), e não
+   com background-position, para não repintar a página a cada
+   frame.
+   ============================================================ */
+
+/* Base estática (gradiente do céu), sempre atrás de tudo. */
+html {
+  background-color: #04091c !important;
+  background-image: linear-gradient(180deg, #04091c 0%, #071536 45%, #0c2154 100%) !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+}
+
+body {
+  background: transparent !important;
+}
+
+/* Camada do céu em movimento: fixa, com transform (GPU), só com a
+   nebulosa (sem estrelas). Translação pequena sobre uma área maior
+   -> sem bordas. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -8%;
+  z-index: -1;
+  pointer-events: none;
+  will-change: transform;
+  background-image: url("milkyway.svg");
+  background-size: 125% 125%;
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  animation: sky-drift-a 150s ease-in-out infinite alternate;
+}
+
+/* Movimento fluido: a nebulosa desliza devagar, para a frente e para
+   trás (movimento contínuo). */
+@keyframes sky-drift-a {
+  from { transform: translate3d(-1.5%, -1%, 0); }
+  to   { transform: translate3d(1.5%, 1%, 0); }
+}
+
+/* Quem pediu menos movimento no sistema: céu estático. */
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+}
+
+/* Cabeçalho e barra lateral sem fundo próprio -> deixa ver o céu. */
+#gb,
+[class*="F1QCd-yXBf7b-yrbHlf-xCUyXc"] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Barra de pesquisa da página inicial (.AT4vnd, existe só no index):
+   deixa de ser cinzento sólido e passa a vidro azul subtil — pouca
+   cor, muito desfoque, contorno fino, para se ver o céu por trás.
+   Uso box-shadow (inset) em vez de border para não alterar o layout. */
+.AT4vnd {
+  background-color: rgba(96, 165, 250, 0.16) !important;
+  background-image: linear-gradient(180deg, rgba(191, 219, 254, 0.18), rgba(59, 130, 246, 0.08)) !important;
+  backdrop-filter: blur(22px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(191, 219, 254, 0.3),
+    0 6px 18px rgba(6, 20, 60, 0.3) !important;
+}
+
+.AT4vnd input,
+.AT4vnd .WaZuTd,
+.AT4vnd .google-material-icons {
+  color: #eef4ff !important;
+}
+
+.AT4vnd input::placeholder {
+  color: rgba(226, 236, 255, 0.82) !important;
+}
+
+/* Cartões de conteúdo que eram cinzentos — o cartão de aviso da
+   página inicial (.G6g8Wc) e os cartões de definições (a.umngff,
+   em data-and-privacy) — passam a vidro azul subtil (pouca cor,
+   muito desfoque), igual à barra de pesquisa, para deixarem de ser
+   manchas cinzentas sobre o céu. Sem 'border' para não alterar o
+   layout. */
+.G6g8Wc,
+a.umngff {
+  background-color: rgba(96, 165, 250, 0.11) !important;
+  background-image: linear-gradient(180deg, rgba(191, 219, 254, 0.13), rgba(59, 130, 246, 0.05)) !important;
+  backdrop-filter: blur(20px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(130%) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(191, 219, 254, 0.22),
+    0 8px 22px rgba(6, 20, 60, 0.3) !important;
+}
+
+/* Modo claro: o texto do cabeçalho, da barra lateral e do rodapé
+   tem de ficar claro para continuar legível sobre o céu.
+   (No modo escuro o texto já é claro, por isso não é alterado.) */
+@media (prefers-color-scheme: light) {
+  #gb,
+  #gb * {
+    color: #e7eeff !important;
+  }
+  [class*="yrbHlf-xCUyXc"] [class*="SCFHVc"],
+  [class*="yrbHlf-xCUyXc"] a,
+  [class*="yrbHlf-xCUyXc"] [role="link"] {
+    color: #cdd9f5 !important;
+  }
+  [class*="yrbHlf-xCUyXc"] [class*="auswjd"],
+  [class*="yrbHlf-xCUyXc"] [class*="auswjd"] [class*="SCFHVc"] {
+    color: #8ab4f8 !important;
+  }
+  .KlUiRc,
+  .ne2Ple-oshW8e-V67aGc {
+    color: #c4c7c5 !important;
+  }
+  .G6g8Wc .tKjVGe,
+  .G6g8Wc .A8Mzwd,
+  a.umngff {
+    color: #eaf1ff !important;
+  }
+}
