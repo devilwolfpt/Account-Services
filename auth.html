@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Autenticação | Iniciar Sessão & Criar Conta</title>
+  <link rel="shortcut icon" href="favicon%20icon/Log%C3%B3tipo%20circular%20NAI%20azul-ciano.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -112,42 +113,246 @@
             </div>
           </div>
 
-          <!-- Card de conta ativa (se o utilizador já tiver sessão) -->
-          <div class="sso-active-account" id="ssoActiveAccount" style="display:none;">
-            <div class="sso-account-avatar" id="ssoActiveAvatar">U</div>
-            <div class="sso-account-details">
-              <strong id="ssoActiveName">Utilizador</strong>
-              <span id="ssoActiveEmail">user@example.com</span>
+          <!-- VISTA INICIAL DE CONSENTIMENTO & PERMISSÕES (oculta quando o utilizador clica em Continuar e é necessária ação bancária) -->
+          <div id="ssoConsentInitialView">
+            <!-- Card de conta ativa (se o utilizador já tiver sessão) -->
+            <div class="sso-active-account" id="ssoActiveAccount" style="display:none;">
+              <div class="sso-account-avatar" id="ssoActiveAvatar">U</div>
+              <div class="sso-account-details">
+                <strong id="ssoActiveName">Utilizador</strong>
+                <span id="ssoActiveEmail">user@example.com</span>
+              </div>
+            </div>
+
+            <!-- Permissões a partilhar -->
+            <div class="sso-permissions-block">
+              <p class="sso-share-heading">A tua conta vai partilhar com <strong id="ssoShareAppName">App</strong>:</p>
+              <ul class="sso-permissions-list">
+                <li>
+                  <span class="perm-check-icon">✓</span>
+                  <span>Nome e foto de perfil</span>
+                </li>
+                <li>
+                  <span class="perm-check-icon">✓</span>
+                  <span>Endereço de e-mail</span>
+                </li>
+                <li>
+                  <span class="perm-check-icon">✓</span>
+                  <span>Autenticação segura (sem partilha de palavra-passe)</span>
+                </li>
+                <li id="ssoPermBankingRow" style="display:none; color: var(--highlight-blue); font-weight: 600;">
+                  <span class="perm-check-icon" style="background: rgba(0, 128, 255, 0.15); color: var(--highlight-blue);">💳</span>
+                  <span>Dados bancários e saldo financeiro (Requisito da aplicação)</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Ações: Permitir / Cancelar (visíveis por defeito) -->
+            <div class="sso-buttons-group" id="ssoDefaultActionButtons">
+              <button type="button" class="btn-gradient-submit" id="ssoAllowBtn" style="width: 100%; justify-content: center; padding: 12px 28px; font-size: 0.78rem;">
+                <span id="ssoAllowBtnText">PERMITIR ACESSO</span>
+                <span class="arrow-icon">→</span>
+              </button>
+              <button type="button" class="sso-btn-cancel-flat" id="ssoCancelBtn">Cancelar</button>
+            </div>
+
+            <!-- Opção de usar outra conta caso já exista sessão -->
+            <div class="sso-switch-account-wrapper" id="ssoSwitchAccountWrapper" style="display:none;">
+              <button type="button" class="sso-btn-link" id="ssoSwitchAccountBtn">Iniciar com outra conta</button>
             </div>
           </div>
 
-          <!-- Permissões a partilhar -->
-          <div class="sso-permissions-block">
-            <p class="sso-share-heading">A tua conta vai partilhar com <strong id="ssoShareAppName">App</strong>:</p>
-            <ul class="sso-permissions-list">
-              <li>
-                <span class="perm-check-icon">✓</span>
-                <span>Nome e foto de perfil</span>
-              </li>
-              <li>
-                <span class="perm-check-icon">✓</span>
-                <span>Endereço de e-mail</span>
-              </li>
-              <li>
-                <span class="perm-check-icon">✓</span>
-                <span>Autenticação segura (sem partilha de palavra-passe)</span>
-              </li>
-            </ul>
+          <!-- Painel Dinâmico: Solicitação de Dados Bancários (2 etapas: Cartão → Morada) -->
+          <!-- Mostrado EXCLUSIVAMENTE após clicar em Continuar se forem requeridos dados bancários -->
+          <!-- Painel Dinâmico: Solicitação de Dados Bancários em 4 Etapas Compactas (Sem cortes) -->
+          <!-- Mostrado EXCLUSIVAMENTE após clicar em Continuar se forem requeridos dados bancários -->
+          <div id="ssoRequiredBankingPanel" style="display:none; background: rgba(0, 128, 255, 0.04); border: 1px solid rgba(0, 128, 255, 0.2); border-radius: 12px; padding: 14px; margin-bottom: 14px; text-align: left;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+              <span style="font-size: 0.65rem; font-weight: 800; background: #0080ff; color: #fff; padding: 2px 6px; border-radius: 4px;">AÇÃO NECESSÁRIA</span>
+              <strong id="ssoBankingPanelTitle" style="font-size: 0.8rem; color: #0f172a;">Dados do Cartão (1/4)</strong>
+            </div>
+            <!-- Indicador de 4 etapas compacto -->
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;">
+              <div id="ssoBankDot1" style="width:20px;height:20px;border-radius:50%;background:#0080ff;color:#fff;font-size:0.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+              <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="ssoBankBar" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+              <div id="ssoBankDot2" style="width:20px;height:20px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+              <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="ssoBankBar2" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+              <div id="ssoBankDot3" style="width:20px;height:20px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+              <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="ssoBankBar3" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+              <div id="ssoBankDot4" style="width:20px;height:20px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.65rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+            </div>
+
+            <!-- ETAPA 1: DADOS DO CARTÃO (Obrigatório) -->
+            <div id="ssoBankingStep1">
+              <p style="font-size:0.72rem;color:#475569;margin-bottom:8px;line-height:1.4;">Esta app necessita de um cartão bancário válido. Preencha os dados reais do seu cartão:</p>
+
+              <!-- Número do Cartão -->
+              <div class="input-box" style="margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg></span>
+                <input type="text" id="ssoReqCardNum" placeholder="Número do cartão" maxlength="19" inputmode="numeric" autocomplete="cc-number">
+              </div>
+              <div id="ssoReqCardBrandHint" style="font-size:0.68rem;font-weight:600;min-height:14px;margin:-2px 0 6px 4px;"></div>
+
+              <!-- Validade e CVC (2 colunas espaçosas) -->
+              <div style="display:flex;gap:6px;">
+                <div class="input-box" style="margin-bottom:0;flex:1;min-width:0;">
+                  <input type="text" id="ssoReqCardExp" class="input-center" placeholder="MM/AA" maxlength="5" inputmode="numeric" autocomplete="cc-exp">
+                </div>
+                <div class="input-box" style="margin-bottom:0;flex:1;min-width:0;">
+                  <input type="text" id="ssoReqCardCvc" class="input-center" placeholder="CVC" maxlength="4" inputmode="numeric" autocomplete="cc-csc">
+                </div>
+              </div>
+
+              <!-- Tipo de Cartão e Nome do Titular -->
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <div class="input-box" style="margin-bottom:0;flex:1.1;min-width:0;">
+                  <select id="ssoReqCardType" class="select-compact">
+                    <option value="Débito" selected>Débito</option>
+                    <option value="Crédito">Crédito</option>
+                  </select>
+                </div>
+                <div class="input-box" style="margin-bottom:0;flex:2;min-width:0;">
+                  <input type="text" id="ssoReqCardHolder" placeholder="Nome do titular" autocomplete="cc-name" style="padding-left:12px;">
+                </div>
+              </div>
+
+              <button type="button" id="ssoBankingNext1Btn" style="margin-top:10px;width:100%;padding:10px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                Seguinte: Conta Bancária →
+              </button>
+              <button type="button" id="ssoCancelBankingBtn1" style="margin-top:6px;width:100%;padding:7px;background:transparent;color:#94a3b8;border:none;font-size:0.72rem;cursor:pointer;font-family:inherit;">
+                Cancelar
+              </button>
+            </div>
+
+            <!-- ETAPA 2: CONTA BANCÁRIA (Opcional) -->
+            <div id="ssoBankingStep2" style="display:none;">
+              <p style="font-size:0.72rem;color:#475569;margin-bottom:8px;line-height:1.4;">Associe a sua conta bancária (opcional para apps de finanças):</p>
+
+              <!-- Banco & Saldo -->
+              <div style="display:flex;gap:6px;">
+                <div class="input-box" style="margin-bottom:0;flex:1.4;">
+                  <select id="ssoReqBankName" style="background:transparent;border:none;width:100%;font-size:0.75rem;outline:none;cursor:pointer;color:inherit;">
+                    <option value="" selected>Selecionar Banco</option>
+                    <option value="Caixa Geral de Depósitos">CGD</option>
+                    <option value="Millennium BCP">Millennium BCP</option>
+                    <option value="Santander Totta">Santander</option>
+                    <option value="Banco BPI">BPI</option>
+                    <option value="Novo Banco">Novo Banco</option>
+                    <option value="ActivoBank">ActivoBank</option>
+                    <option value="Revolut Bank">Revolut</option>
+                    <option value="Outro Banco">Outro Banco</option>
+                  </select>
+                </div>
+                <div class="input-box" style="margin-bottom:0;flex:1;">
+                  <input type="number" id="ssoReqBalance" placeholder="Saldo em €" min="0" step="0.01">
+                </div>
+              </div>
+
+              <!-- IBAN -->
+              <div class="input-box" style="margin-top:6px;margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16M4 14h16M7 6v12M17 6v12"></path></svg></span>
+                <input type="text" id="ssoReqIban" placeholder="IBAN (ex: PT50 0000 0000 ...)" maxlength="34">
+              </div>
+
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button type="button" id="ssoBankingBack2Btn" style="flex:1;padding:9px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                  ← Voltar
+                </button>
+                <button type="button" id="ssoBankingNext2Btn" style="flex:1.4;padding:9px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                  Seguinte: Morada →
+                </button>
+              </div>
+              <button type="button" id="ssoBankingSkip2Btn" style="margin-top:6px;width:100%;padding:6px;background:transparent;color:#64748b;border:none;font-size:0.72rem;cursor:pointer;text-decoration:underline;font-family:inherit;">
+                Saltar dados da conta bancária
+              </button>
+            </div>
+
+            <!-- ETAPA 3: MORADA DE FATURAÇÃO -->
+            <div id="ssoBankingStep3" style="display:none;">
+              <p style="font-size:0.72rem;color:#475569;margin-bottom:8px;line-height:1.4;">Introduza a morada associada a este método de pagamento:</p>
+              <!-- País -->
+              <div class="input-box" style="margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span>
+                <select id="ssoReqCountry" style="background:transparent;border:none;flex:1;font-size:0.82rem;outline:none;cursor:pointer;color:inherit;min-width:0;">
+                  <option value="Portugal" selected>Portugal</option>
+                  <option value="Espanha">Espanha</option>
+                  <option value="França">França</option>
+                  <option value="Alemanha">Alemanha</option>
+                  <option value="Reino Unido">Reino Unido</option>
+                  <option value="Brasil">Brasil</option>
+                  <option value="Estados Unidos">Estados Unidos</option>
+                  <option value="Outro país">Outro país</option>
+                </select>
+              </div>
+              <!-- Endereço -->
+              <div class="input-box" style="margin-top:6px;margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+                <input type="text" id="ssoReqAddress" placeholder="Endereço (Rua, Número)" autocomplete="street-address">
+              </div>
+              <!-- Apartamento (opcional) -->
+              <div class="input-box" style="margin-top:6px;margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg></span>
+                <input type="text" id="ssoReqApartment" placeholder="Apartamento, suite (opcional)" autocomplete="address-line2">
+              </div>
+              <!-- Código postal + Cidade -->
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <div class="input-box" style="margin-bottom:0;flex:1;">
+                  <input type="text" id="ssoReqPostalCode" placeholder="Código postal" autocomplete="postal-code">
+                </div>
+                <div class="input-box" style="margin-bottom:0;flex:1;">
+                  <input type="text" id="ssoReqCity" placeholder="Cidade" autocomplete="address-level2">
+                </div>
+              </div>
+
+              <div style="display:flex;gap:6px;margin-top:10px;">
+                <button type="button" id="ssoBankingBack3Btn" style="flex:1;padding:9px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                  ← Voltar
+                </button>
+                <button type="button" id="ssoBankingNext3Btn" style="flex:1.4;padding:9px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                  Seguinte: Fiscal & Finalizar →
+                </button>
+              </div>
+            </div>
+
+            <!-- ETAPA 4: DADOS FISCAIS & FINALIZAR -->
+            <div id="ssoBankingStep4" style="display:none;">
+              <p style="font-size:0.72rem;color:#475569;margin-bottom:8px;line-height:1.4;">Dados fiscais opcionais e confirmação de acesso:</p>
+
+              <!-- NIF / Contribuinte -->
+              <div class="input-box" style="margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line><line x1="7" y1="12" x2="13" y2="12"></line></svg></span>
+                <input type="text" id="ssoReqNif" placeholder="NIF / Contribuinte (opcional)" maxlength="15">
+              </div>
+
+              <!-- Telefone de contacto -->
+              <div class="input-box" style="margin-top:6px;margin-bottom:0;">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></span>
+                <input type="tel" id="ssoReqPhone" placeholder="Telemóvel de contacto (opcional)" maxlength="16">
+              </div>
+
+              <!-- Termos rápidos -->
+              <div style="font-size:0.65rem;color:#64748b;margin:8px 0;line-height:1.35;background:rgba(0,128,255,0.06);padding:6px 8px;border-radius:6px;">
+                🔒 Os dados são encriptados e partilhados apenas com aplicações autorizadas por si.
+              </div>
+
+              <div style="display:flex;gap:6px;">
+                <button type="button" id="ssoBankingBack4Btn" style="flex:1;padding:9px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                  ← Voltar
+                </button>
+                <button type="button" id="ssoSaveBankingAndAuthBtn" style="flex:2;padding:10px;background:linear-gradient(90deg,#0080ff,#6b2cf5);color:#fff;border:none;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.02em;">
+                  GUARDAR & ENTRAR →
+                </button>
+              </div>
+
+              <button type="button" id="ssoCancelBankingBtn" style="margin-top:4px;width:100%;padding:7px;background:transparent;color:#94a3b8;border:none;font-size:0.72rem;cursor:pointer;font-family:inherit;">
+                Cancelar
+              </button>
+            </div>
           </div>
 
-          <!-- Ações: Permitir / Cancelar com botões do estilo oficial -->
-          <div class="sso-buttons-group">
-            <button type="button" class="btn-gradient-submit" id="ssoAllowBtn" style="width: 100%; justify-content: center; padding: 12px 28px; font-size: 0.78rem;">
-              <span id="ssoAllowBtnText">PERMITIR ACESSO</span>
-              <span class="arrow-icon">→</span>
-            </button>
-            <button type="button" class="sso-btn-cancel-flat" id="ssoCancelBtn">Cancelar</button>
-          </div>
+          <!-- Div fantasma — mantido para compatibilidade do script (já não é exibido) -->
+          <div id="ssoBankingActionButtons" style="display:none;"></div>
+
 
           <!-- Opção de usar outra conta caso já exista sessão -->
           <div class="sso-switch-account-wrapper" id="ssoSwitchAccountWrapper" style="display:none;">
@@ -270,6 +475,10 @@
                 <div class="step-badge">4</div>
                 <span class="step-caption">Senha</span>
               </div>
+              <div class="step-col" data-step="5">
+                <div class="step-badge">5</div>
+                <span class="step-caption">Carteira</span>
+              </div>
             </div>
 
             <form id="sliderRegisterForm" class="auth-form" novalidate>
@@ -375,6 +584,213 @@
                       </svg>
                     </button>
                   </div>
+                </div>
+
+                <!-- PASSO 5: CARTEIRA / CARTÃO & CONTA (4 Sub-etapas compactas) -->
+                <div class="register-step-pane" id="sliderPaneStep5" data-step-pane="5" style="display:none; flex-direction:column; width:100%;">
+                  
+                  <!-- Cabeçalho e Indicador de 4 Sub-etapas -->
+                  <div style="background: rgba(0, 128, 255, 0.05); border: 1px solid rgba(0, 128, 255, 0.18); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; text-align: left;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                      <span style="font-size: 0.62rem; font-weight: 800; background: var(--highlight-blue); color: #fff; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em;">OPCIONAL</span>
+                      <strong id="sliderBankTitle" style="font-size: 0.74rem; color: #1e293b;">Dados do Cartão (1/4)</strong>
+                    </div>
+
+                    <!-- Indicador compacto com 4 pontos -->
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <div id="sliderBankDot1" style="width:18px;height:18px;border-radius:50%;background:#0080ff;color:#fff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+                      <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="sliderBankBar1" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+                      <div id="sliderBankDot2" style="width:18px;height:18px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+                      <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="sliderBankBar2" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+                      <div id="sliderBankDot3" style="width:18px;height:18px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+                      <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="sliderBankBar3" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+                      <div id="sliderBankDot4" style="width:18px;height:18px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.1: DADOS DO CARTÃO -->
+                  <div id="sliderBankStep1" style="width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Preencha os dados reais do seu cartão de pagamento:</p>
+
+                    <div class="input-box" style="margin-bottom:0;">
+                      <span class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                          <line x1="2" y1="10" x2="22" y2="10"></line>
+                        </svg>
+                      </span>
+                      <input type="text" id="sliderRegCardNum" placeholder="Número do cartão" maxlength="19" inputmode="numeric" autocomplete="cc-number">
+                    </div>
+                    <div id="sliderCardBrandHint" style="font-size:0.65rem; font-weight:600; min-height:14px; margin:-2px 0 4px 4px;"></div>
+
+                    <!-- Validade e CVC (2 colunas espaçosas) -->
+                    <div style="display:flex; gap:6px;">
+                      <div class="input-box" style="margin-bottom:0;flex:1;min-width:0;">
+                        <input type="text" id="sliderRegCardExp" class="input-center" placeholder="MM/AA" maxlength="5" inputmode="numeric" autocomplete="cc-exp">
+                      </div>
+                      <div class="input-box" style="margin-bottom:0;flex:1;min-width:0;">
+                        <input type="text" id="sliderRegCardCvc" class="input-center" placeholder="CVC" maxlength="4" inputmode="numeric" autocomplete="cc-csc">
+                      </div>
+                    </div>
+
+                    <!-- Tipo de Cartão e Nome do Titular -->
+                    <div style="display:flex; gap:6px; margin-top:6px;">
+                      <div class="input-box" style="margin-bottom:0;flex:1.1;min-width:0;">
+                        <select id="sliderRegCardType" class="select-compact">
+                          <option value="Débito" selected>Débito</option>
+                          <option value="Crédito">Crédito</option>
+                        </select>
+                      </div>
+                      <div class="input-box" style="margin-bottom:0;flex:2;min-width:0;">
+                        <input type="text" id="sliderRegCardHolder" placeholder="Nome no cartão" autocomplete="cc-name" style="padding-left:12px;">
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                      <button type="button" id="btnSliderBankBack1" style="flex:1;padding:8px;background:transparent;color:#64748b;border:1px solid rgba(100,116,139,0.3);border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Senha
+                      </button>
+                      <button type="button" id="btnSliderBankNext1" style="flex:2;padding:8px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                        Seguinte: Banco →
+                      </button>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 6px;">
+                      <button type="button" id="btnSliderSkipBanking" style="background: none; border: none; color: var(--highlight-blue); font-size: 0.7rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 2px 4px; font-family: inherit;">
+                        Saltar este passo (Configurar mais tarde)
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.2: CONTA BANCÁRIA -->
+                  <div id="sliderBankStep2" style="display:none;width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Associe a sua conta bancária (opcional):</p>
+
+                    <div style="display:flex;gap:6px;">
+                      <div class="input-box" style="margin-bottom:0;flex:1.4;">
+                        <select id="sliderRegBankName" style="background:transparent;border:none;width:100%;font-size:0.75rem;outline:none;cursor:pointer;color:inherit;">
+                          <option value="" selected>Selecionar Banco</option>
+                          <option value="Caixa Geral de Depósitos">CGD</option>
+                          <option value="Millennium BCP">Millennium BCP</option>
+                          <option value="Santander Totta">Santander</option>
+                          <option value="Banco BPI">BPI</option>
+                          <option value="Novo Banco">Novo Banco</option>
+                          <option value="ActivoBank">ActivoBank</option>
+                          <option value="Revolut Bank">Revolut</option>
+                          <option value="Outro Banco">Outro Banco</option>
+                        </select>
+                      </div>
+                      <div class="input-box" style="margin-bottom:0;flex:1;">
+                        <input type="number" id="sliderRegBalance" placeholder="Saldo em €" min="0" step="0.01">
+                      </div>
+                    </div>
+
+                    <div class="input-box" style="margin-top:6px;margin-bottom:0;">
+                      <span class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M4 10h16M4 14h16M7 6v12M17 6v12"></path>
+                        </svg>
+                      </span>
+                      <input type="text" id="sliderRegIban" placeholder="IBAN (ex: PT50 0000 0000 ...)" maxlength="34">
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:10px;">
+                      <button type="button" id="btnSliderBankBack2" style="flex:1;padding:8px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Voltar
+                      </button>
+                      <button type="button" id="btnSliderBankNext2" style="flex:1.5;padding:8px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                        Seguinte: Morada →
+                      </button>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 6px;">
+                      <button type="button" id="btnSliderBankSkip2" style="background: none; border: none; color: #64748b; font-size: 0.7rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 2px 4px; font-family: inherit;">
+                        Saltar dados da conta bancária
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.3: MORADA DE FATURAÇÃO -->
+                  <div id="sliderBankStep3" style="display:none;width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Morada associada ao cartão de faturação:</p>
+
+                    <div class="input-box" style="margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span>
+                      <select id="sliderRegCountry" style="background:transparent;border:none;flex:1;font-size:0.8rem;outline:none;cursor:pointer;color:inherit;min-width:0;">
+                        <option value="Portugal" selected>Portugal</option>
+                        <option value="Espanha">Espanha</option>
+                        <option value="França">França</option>
+                        <option value="Alemanha">Alemanha</option>
+                        <option value="Reino Unido">Reino Unido</option>
+                        <option value="Brasil">Brasil</option>
+                        <option value="Estados Unidos">Estados Unidos</option>
+                        <option value="Outro país">Outro país</option>
+                      </select>
+                    </div>
+
+                    <div class="input-box" style="margin-top:5px;margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+                      <input type="text" id="sliderRegAddress" placeholder="Endereço (Rua, Número)" autocomplete="street-address">
+                    </div>
+
+                    <div class="input-box" style="margin-top:5px;margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg></span>
+                      <input type="text" id="sliderRegApartment" placeholder="Apartamento, suite (opcional)" autocomplete="address-line2">
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:5px;">
+                      <div class="input-box" style="flex:1;margin-bottom:0;">
+                        <input type="text" id="sliderRegPostalCode" placeholder="Código postal" autocomplete="postal-code">
+                      </div>
+                      <div class="input-box" style="flex:1;margin-bottom:0;">
+                        <input type="text" id="sliderRegCity" placeholder="Cidade" autocomplete="address-level2">
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                      <button type="button" id="btnSliderBankBack3" style="flex:1;padding:8px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Voltar
+                      </button>
+                      <button type="button" id="btnSliderBankNext3" style="flex:1.5;padding:8px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                        Seguinte: Fiscal →
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.4: DADOS FISCAIS & FINALIZAR -->
+                  <div id="sliderBankStep4" style="display:none;width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Dados fiscais opcionais e confirmação da conta:</p>
+
+                    <div class="input-box" style="margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line><line x1="7" y1="12" x2="13" y2="12"></line></svg></span>
+                      <input type="text" id="sliderRegNif" placeholder="NIF / Contribuinte (opcional)" maxlength="15">
+                    </div>
+
+                    <div class="input-box" style="margin-top:5px;margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></span>
+                      <input type="tel" id="sliderRegPhone" placeholder="Telemóvel de contacto (opcional)" maxlength="16">
+                    </div>
+
+                    <div style="font-size:0.64rem;color:#64748b;margin:6px 0;line-height:1.35;background:rgba(0,128,255,0.06);padding:5px 8px;border-radius:6px;">
+                      🔒 Dados encriptados com segurança militar para o ecossistema Nai.
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:6px;">
+                      <button type="button" id="btnSliderBankBack4" style="flex:1;padding:9px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Voltar
+                      </button>
+                      <button type="button" id="btnSliderBankFinish" style="flex:2;padding:9px;background:linear-gradient(90deg,#0080ff,#6b2cf5);color:#fff;border:none;border-radius:8px;font-size:0.76rem;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.02em;">
+                        CRIAR CONTA →
+                      </button>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 6px;">
+                      <button type="button" id="btnSliderSkipBanking4" style="background: none; border: none; color: var(--highlight-blue); font-size: 0.7rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 2px 4px; font-family: inherit;">
+                        Saltar e criar conta sem dados bancários
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
 
               </div>
@@ -531,6 +947,10 @@
                 <div class="step-badge">4</div>
                 <span class="step-caption">Senha</span>
               </div>
+              <div class="step-col" data-step="5">
+                <div class="step-badge">5</div>
+                <span class="step-caption">Carteira</span>
+              </div>
             </div>
 
             <!-- Formulário Criar Conta -->
@@ -637,6 +1057,213 @@
                       </svg>
                     </button>
                   </div>
+                </div>
+
+                <!-- PASSO 5: CARTEIRA / CARTÃO & CONTA (4 Sub-etapas compactas) -->
+                <div class="register-step-pane" id="sidePaneStep5" data-step-pane="5" style="display:none; flex-direction:column; width:100%;">
+                  
+                  <!-- Cabeçalho e Indicador de 4 Sub-etapas -->
+                  <div style="background: rgba(0, 128, 255, 0.05); border: 1px solid rgba(0, 128, 255, 0.18); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; text-align: left;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                      <span style="font-size: 0.62rem; font-weight: 800; background: var(--highlight-blue); color: #fff; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em;">OPCIONAL</span>
+                      <strong id="sideBankTitle" style="font-size: 0.74rem; color: #1e293b;">Dados do Cartão (1/4)</strong>
+                    </div>
+
+                    <!-- Indicador compacto com 4 pontos -->
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <div id="sideBankDot1" style="width:18px;height:18px;border-radius:50%;background:#0080ff;color:#fff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+                      <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="sideBankBar1" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+                      <div id="sideBankDot2" style="width:18px;height:18px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+                      <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="sideBankBar2" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+                      <div id="sideBankDot3" style="width:18px;height:18px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+                      <div style="flex:1;height:2px;background:rgba(0,128,255,0.15);border-radius:1px;"><div id="sideBankBar3" style="height:100%;width:0%;background:#0080ff;transition:width .3s;border-radius:1px;"></div></div>
+                      <div id="sideBankDot4" style="width:18px;height:18px;border-radius:50%;background:rgba(0,128,255,0.15);color:#0080ff;font-size:0.62rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.1: DADOS DO CARTÃO -->
+                  <div id="sideBankStep1" style="width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Preencha os dados reais do seu cartão de pagamento:</p>
+
+                    <div class="custom-input-box" style="margin-bottom:0;">
+                      <span class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                          <line x1="2" y1="10" x2="22" y2="10"></line>
+                        </svg>
+                      </span>
+                      <input type="text" id="sideRegCardNum" placeholder="Número do cartão" maxlength="19" inputmode="numeric" autocomplete="cc-number">
+                    </div>
+                    <div id="sideCardBrandHint" style="font-size:0.65rem; font-weight:600; min-height:14px; margin:-2px 0 4px 4px;"></div>
+
+                    <!-- Validade e CVC (2 colunas espaçosas) -->
+                    <div style="display:flex; gap:6px;">
+                      <div class="custom-input-box" style="margin-bottom:0;flex:1;min-width:0;">
+                        <input type="text" id="sideRegCardExp" class="input-center" placeholder="MM/AA" maxlength="5" inputmode="numeric" autocomplete="cc-exp">
+                      </div>
+                      <div class="custom-input-box" style="margin-bottom:0;flex:1;min-width:0;">
+                        <input type="text" id="sideRegCardCvc" class="input-center" placeholder="CVC" maxlength="4" inputmode="numeric" autocomplete="cc-csc">
+                      </div>
+                    </div>
+
+                    <!-- Tipo de Cartão e Nome do Titular -->
+                    <div style="display:flex; gap:6px; margin-top:6px;">
+                      <div class="custom-input-box" style="margin-bottom:0;flex:1.1;min-width:0;">
+                        <select id="sideRegCardType" class="select-compact">
+                          <option value="Débito" selected>Débito</option>
+                          <option value="Crédito">Crédito</option>
+                        </select>
+                      </div>
+                      <div class="custom-input-box" style="margin-bottom:0;flex:2;min-width:0;">
+                        <input type="text" id="sideRegCardHolder" placeholder="Nome no cartão" autocomplete="cc-name" style="padding-left:12px;">
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                      <button type="button" id="btnSideBankBack1" style="flex:1;padding:8px;background:transparent;color:#64748b;border:1px solid rgba(100,116,139,0.3);border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Senha
+                      </button>
+                      <button type="button" id="btnSideBankNext1" style="flex:2;padding:8px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                        Seguinte: Banco →
+                      </button>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 6px;">
+                      <button type="button" id="btnSideSkipBanking" style="background: none; border: none; color: var(--highlight-blue); font-size: 0.7rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 2px 4px; font-family: inherit;">
+                        Saltar este passo (Configurar mais tarde)
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.2: CONTA BANCÁRIA -->
+                  <div id="sideBankStep2" style="display:none;width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Associe a sua conta bancária (opcional):</p>
+
+                    <div style="display:flex;gap:6px;">
+                      <div class="custom-input-box" style="margin-bottom:0;flex:1.4;">
+                        <select id="sideRegBankName" style="background:transparent;border:none;width:100%;font-size:0.75rem;outline:none;cursor:pointer;color:inherit;">
+                          <option value="" selected>Selecionar Banco</option>
+                          <option value="Caixa Geral de Depósitos">CGD</option>
+                          <option value="Millennium BCP">Millennium BCP</option>
+                          <option value="Santander Totta">Santander</option>
+                          <option value="Banco BPI">BPI</option>
+                          <option value="Novo Banco">Novo Banco</option>
+                          <option value="ActivoBank">ActivoBank</option>
+                          <option value="Revolut Bank">Revolut</option>
+                          <option value="Outro Banco">Outro Banco</option>
+                        </select>
+                      </div>
+                      <div class="custom-input-box" style="margin-bottom:0;flex:1;">
+                        <input type="number" id="sideRegBalance" placeholder="Saldo em €" min="0" step="0.01">
+                      </div>
+                    </div>
+
+                    <div class="custom-input-box" style="margin-top:6px;margin-bottom:0;">
+                      <span class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M4 10h16M4 14h16M7 6v12M17 6v12"></path>
+                        </svg>
+                      </span>
+                      <input type="text" id="sideRegIban" placeholder="IBAN (ex: PT50 0000 0000 ...)" maxlength="34">
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:10px;">
+                      <button type="button" id="btnSideBankBack2" style="flex:1;padding:8px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Voltar
+                      </button>
+                      <button type="button" id="btnSideBankNext2" style="flex:1.5;padding:8px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                        Seguinte: Morada →
+                      </button>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 6px;">
+                      <button type="button" id="btnSideBankSkip2" style="background: none; border: none; color: #64748b; font-size: 0.7rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 2px 4px; font-family: inherit;">
+                        Saltar dados da conta bancária
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.3: MORADA DE FATURAÇÃO -->
+                  <div id="sideBankStep3" style="display:none;width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Morada associada ao cartão de faturação:</p>
+
+                    <div class="custom-input-box" style="margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg></span>
+                      <select id="sideRegCountry" style="background:transparent;border:none;flex:1;font-size:0.8rem;outline:none;cursor:pointer;color:inherit;min-width:0;">
+                        <option value="Portugal" selected>Portugal</option>
+                        <option value="Espanha">Espanha</option>
+                        <option value="França">França</option>
+                        <option value="Alemanha">Alemanha</option>
+                        <option value="Reino Unido">Reino Unido</option>
+                        <option value="Brasil">Brasil</option>
+                        <option value="Estados Unidos">Estados Unidos</option>
+                        <option value="Outro país">Outro país</option>
+                      </select>
+                    </div>
+
+                    <div class="custom-input-box" style="margin-top:5px;margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></span>
+                      <input type="text" id="sideRegAddress" placeholder="Endereço (Rua, Número)" autocomplete="street-address">
+                    </div>
+
+                    <div class="custom-input-box" style="margin-top:5px;margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg></span>
+                      <input type="text" id="sideRegApartment" placeholder="Apartamento, suite (opcional)" autocomplete="address-line2">
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:5px;">
+                      <div class="custom-input-box" style="flex:1;margin-bottom:0;">
+                        <input type="text" id="sideRegPostalCode" placeholder="Código postal" autocomplete="postal-code">
+                      </div>
+                      <div class="custom-input-box" style="flex:1;margin-bottom:0;">
+                        <input type="text" id="sideRegCity" placeholder="Cidade" autocomplete="address-level2">
+                      </div>
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:8px;">
+                      <button type="button" id="btnSideBankBack3" style="flex:1;padding:8px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Voltar
+                      </button>
+                      <button type="button" id="btnSideBankNext3" style="flex:1.5;padding:8px;background:#0080ff;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                        Seguinte: Fiscal →
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- ETAPA 5.4: DADOS FISCAIS & FINALIZAR -->
+                  <div id="sideBankStep4" style="display:none;width:100%;">
+                    <p style="font-size:0.7rem;color:#64748b;margin:0 0 6px 2px;line-height:1.35;">Dados fiscais opcionais e confirmação da conta:</p>
+
+                    <div class="custom-input-box" style="margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="7" y1="8" x2="17" y2="8"></line><line x1="7" y1="12" x2="13" y2="12"></line></svg></span>
+                      <input type="text" id="sideRegNif" placeholder="NIF / Contribuinte (opcional)" maxlength="15">
+                    </div>
+
+                    <div class="custom-input-box" style="margin-top:5px;margin-bottom:0;">
+                      <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg></span>
+                      <input type="tel" id="sideRegPhone" placeholder="Telemóvel de contacto (opcional)" maxlength="16">
+                    </div>
+
+                    <div style="font-size:0.64rem;color:#64748b;margin:6px 0;line-height:1.35;background:rgba(0,128,255,0.06);padding:5px 8px;border-radius:6px;">
+                      🔒 Dados encriptados com segurança militar para o ecossistema Nai.
+                    </div>
+
+                    <div style="display:flex;gap:6px;margin-top:6px;">
+                      <button type="button" id="btnSideBankBack4" style="flex:1;padding:9px;background:transparent;color:#0080ff;border:1px solid rgba(0,128,255,0.3);border-radius:8px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                        ← Voltar
+                      </button>
+                      <button type="button" id="btnSideBankFinish" style="flex:2;padding:9px;background:linear-gradient(90deg,#0080ff,#6b2cf5);color:#fff;border:none;border-radius:8px;font-size:0.76rem;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:0.02em;">
+                        CRIAR CONTA →
+                      </button>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 6px;">
+                      <button type="button" id="btnSideSkipBanking4" style="background: none; border: none; color: var(--highlight-blue); font-size: 0.7rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 2px 4px; font-family: inherit;">
+                        Saltar e criar conta sem dados bancários
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
 
               </div>

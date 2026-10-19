@@ -1,0 +1,47 @@
+/* ============================================================================
+   Home (intro/index.html) — ajustes de disposição
+   ----------------------------------------------------------------------------
+   A barra de pesquisa ("Pesquisar na Conta Nai") foi movida do centro para
+   o cabeçalho, junto do título "Conta Nai" e dos 3 ícones (ajuda, apps,
+   conta). O movimento é estático (feito no próprio index.html), por isso a
+   barra já nasce no topo — sem "salto" do meio para cima ao carregar.
+   O centro fica só com o perfil (nome + e-mail).
+
+   Este ficheiro só é incluído no index.html, por isso estas regras não afetam
+   as outras páginas.
+   ============================================================================ */
+
+/* Cabeçalho: a faixa do meio alinha a barra de pesquisa ao centro. */
+#gb .gb_Vd { align-items: center; }
+#gb .gb_4d.gb_ce {
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* A barra de pesquisa, agora dentro do cabeçalho. */
+#gb .AT4vnd.in-header {
+  position: static !important;
+  flex: 1 1 auto !important;
+  width: auto !important;
+  max-width: 700px !important;
+  min-width: 140px;
+  height: 48px !important;
+  margin: 0 16px !important;
+  align-self: center !important;
+}
+
+/* Centro: só o perfil.
+   - esconde a linha de atalhos (chips) que duplicava a pesquisa/ajuda;
+   - colapsa o bloco que continha a barra de pesquisa (agora vazio), para não
+     deixar um vão entre o perfil e o resto do conteúdo. */
+.FFw9Se-XPtOyb-FCjw3e { display: none !important; }
+.WxnH6c > .fgkpSc { display: none !important; }
+
+/* Centraliza o perfil ao MEIO da área de conteúdo (não no topo).
+   A coluna já é flex (column): basta centrar e ignorar os blocos vazios que
+   sobraram (o antigo espaço das pesquisas/cartões). */
+.WxnH6c > .gVcFcf,
+.WxnH6c > .O4jDed { display: none !important; }
+.WxnH6c { justify-content: center !important; }
+/* O tema dá um margin-top a este bloco, que desalinhava a centragem. */
+.WxnH6c > .tdmI2c { margin-top: 0 !important; }

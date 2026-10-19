@@ -51,10 +51,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 20px;
   overflow-x: hidden;
+  overflow-y: auto;
 }
+
+/* Centro vertical apenas quando conteúdo é menor que o viewport */
+.sso-auth-screen,
+.forms-wrapper {
+  margin: auto 0;
+  width: 100%;
+}
+
 
 /* ==========================================================================
    SSO — ECRÃ DE AUTORIZAÇÃO (MESMA LARGURA DE 900PX E ESTILO DO RESTO)
@@ -78,14 +87,16 @@ body {
   overflow: hidden;
   width: 100%;
   max-width: 900px;
-  height: 505px;
+  min-height: 505px;
+  height: auto;
   display: flex;
+  align-items: stretch;
 }
 
 /* LADO ESCURO (44% - Idêntico ao Painel de Boas-Vindas) */
 .sso-dark-panel {
   width: var(--dark-width);
-  height: 100%;
+  min-height: 100%;
   background: linear-gradient(175deg, #020919 0%, #041029 100%) !important;
   color: #ffffff;
   position: relative;
@@ -159,20 +170,22 @@ body {
 /* LADO CLARO (56% - Conteúdo de Autorização) */
 .sso-white-panel {
   width: var(--form-width);
-  height: 100%;
   background: #ffffff;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 28px 44px;
+  padding: 24px 30px;
+  overflow-y: auto;
+  max-height: 90vh;
 }
 
 .sso-white-content {
   width: 100%;
-  max-width: 340px;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
 }
+
 
 /* App Header */
 .sso-app-header-row {
@@ -531,9 +544,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px 44px;
+  padding: 24px 44px;
   background: var(--card-bg);
   transition: all 0.6s var(--ease-smooth);
+  overflow-y: auto;
 }
 
 .panel-content {
@@ -560,6 +574,9 @@ body {
   opacity: 0;
   pointer-events: none;
   transform: translateX(20px);
+  align-items: flex-start;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 .auth-card.right-panel-active .login-panel {
@@ -691,10 +708,11 @@ body {
   background: var(--card-bg);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  padding: 28px 44px;
+  padding: 24px 44px;
   position: relative;
+  overflow-y: auto;
 }
 
 .panel-inner {
@@ -1112,12 +1130,29 @@ body {
   background: var(--input-bg);
   border: 1px solid transparent;
   border-radius: var(--radius-input);
-  padding: 0 40px 0 44px;
+  padding: 0 14px;
   font-size: 0.85rem;
   font-family: inherit;
   font-weight: 500;
   color: var(--input-text-color);
   transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+/* Quando existe ícone à esquerda */
+.input-box .input-icon ~ input,
+.custom-input-box .input-icon ~ input,
+.input-box:has(.input-icon) input,
+.custom-input-box:has(.input-icon) input {
+  padding-left: 44px;
+}
+
+/* Quando existe botão de ver senha à direita */
+.input-box .btn-toggle-eye ~ input,
+.custom-input-box .btn-toggle-eye ~ input,
+.input-box:has(.btn-toggle-eye) input,
+.custom-input-box:has(.btn-toggle-eye) input {
+  padding-right: 40px;
 }
 
 .input-box input::placeholder, .custom-input-box input::placeholder {
@@ -1179,8 +1214,8 @@ body {
   background: var(--input-bg);
   border: 1px solid transparent;
   border-radius: var(--radius-input);
-  padding: 0 40px 0 44px;
-  font-size: 0.85rem;
+  padding: 0 12px;
+  font-size: 0.82rem;
   font-family: inherit;
   font-weight: 500;
   color: var(--input-text-color);
@@ -1188,6 +1223,46 @@ body {
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
+  box-sizing: border-box;
+}
+
+.input-box .input-icon ~ select,
+.custom-input-box .input-icon ~ select,
+.input-box:has(.input-icon) select,
+.custom-input-box:has(.input-icon) select {
+  padding-left: 44px;
+}
+
+/* Regras específicas para inputs compactos (Validade, CVC, Tipo de Cartão) — NUNCA CORTADOS */
+.input-center,
+input[id$="CardExp"],
+input[id$="CardCvc"] {
+  padding: 0 8px !important;
+  text-align: center !important;
+  font-size: 0.88rem !important;
+  letter-spacing: 0.05em !important;
+  min-width: 0 !important;
+}
+
+.select-compact,
+select[id$="CardType"] {
+  padding: 0 8px !important;
+  text-align: center !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  min-width: 0 !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+
+/* Inputs em colunas divididas sem ícones */
+input[id$="Balance"],
+input[id$="PostalCode"],
+input[id$="City"],
+input[id$="Nif"],
+input[id$="Phone"] {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
 }
 
 .input-box select:focus, .custom-input-box select:focus {

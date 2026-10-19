@@ -75,11 +75,25 @@
     const payload = decodeToken(token);
     if (!payload) return null;
 
+    // Reconstitui dados bancários caso venham nos parâmetros de redirect
+    const bankName = params.get('sso_bank_name');
+    const iban = params.get('sso_iban');
+    const balance = params.get('sso_balance');
+    if (bankName || iban || balance) {
+      payload.banking = {
+        hasBanking: true,
+        bankName: bankName || null,
+        iban: iban || null,
+        balance: parseFloat(balance) || 0,
+        currency: 'EUR'
+      };
+    }
+
     // Guarda localmente e limpa o URL
     saveLocalSession(token, payload);
     const cleanUrl = window.location.href
       .replace(/([?&])sso_token=[^&]*/g, '$1')
-      .replace(/([?&])sso_(name|email|provider|picture)=[^&]*/g, '$1')
+      .replace(/([?&])sso_(name|email|provider|picture|bank_name|iban|balance)=[^&]*/g, '$1')
       .replace(/[?&]$/, '')
       .replace(/\?&/, '?');
     window.history.replaceState({}, document.title, cleanUrl);
@@ -98,7 +112,7 @@
      * @param {object} options
      * @param {string}   options.appName   - Nome da tua app (mostrado no ecrã de autorização)
      * @param {string}   [options.appLogo] - URL do logo da tua app
-     * @param {string}   [options.mode='popup'] - 'popup' (abre janela flutuante estilo Google) ou 'redirect'
+     * @param {string}   [options.mode='popup'] - 'popup' (abre janela flutuante estilo Nai) ou 'redirect'
      * @param {function} [options.onLogin]  - Chamado com o objecto `user` após login
      * @param {function} [options.onLogout] - Chamado após logout
      * @param {boolean}  [options.autoRedirect=false] - Se true, abre login imediatamente se não houver sessão
@@ -111,7 +125,7 @@
 
       const self = this;
 
-      // 1. Escuta mensagens de login via Popup (estilo Google Identity / postMessage)
+      // 1. Escuta mensagens de login via Popup (estilo Nai Identity / postMessage)
       if (!this._listenerRegistered) {
         window.addEventListener('message', function (event) {
           if (event.data && event.data.type === 'ACCOUNT_SERVICES_SSO_SUCCESS') {
@@ -153,7 +167,7 @@
     },
 
     /**
-     * Resolve a URL base para o serviço de autenticação.
+     * Resolve a URL base para o serviço de autenticação com suporte a scopes e banking.
      */
     _getAuthUrl: function (params = {}) {
       const opts = this._options || {};
@@ -165,34 +179,44 @@
       const url = new URL(baseOrigin);
       if (opts.appName) url.searchParams.set('app_name', opts.appName);
       if (opts.appLogo) url.searchParams.set('app_logo', opts.appLogo);
+      if (opts.clientId) url.searchParams.set('client_id', opts.clientId);
+
+      // Passar scopes exigidos (ex: profile, email, banking)
+      const scopes = params.scopes || opts.scopes || ['profile', 'email'];
+      if (Array.isArray(scopes)) {
+        url.searchParams.set('scopes', scopes.join(','));
+      } else if (typeof scopes === 'string') {
+        url.searchParams.set('scopes', scopes);
+      }
 
       for (const [k, v] of Object.entries(params)) {
-        if (v) url.searchParams.set(k, v);
+        if (v && k !== 'scopes') url.searchParams.set(k, v);
       }
       return url.toString();
     },
 
     /**
      * Inicia o fluxo de login (por popup ou redirect de acordo com as opções).
+     * Suporta a passagem dinâmica de scopes específicos (ex: { scopes: ['profile', 'email', 'banking'] }).
      */
     login: function (customOpts = {}) {
       const opts = Object.assign({}, this._options, customOpts);
       if (opts.mode === 'redirect') {
-        this.redirect();
+        this.redirect(opts);
       } else {
-        this.openPopup();
+        this.openPopup(opts);
       }
     },
 
     /**
-     * Abre uma janela flutuante popup no centro do ecrã (como o Google Sign-In).
+     * Abre uma janela flutuante popup no centro do ecrã (como o Nai Sign-In).
      */
-    openPopup: function () {
+    openPopup: function (customOpts = {}) {
       const width = 960;
       const height = 620;
       const left = Math.max(0, (window.screen.width - width) / 2);
       const top  = Math.max(0, (window.screen.height - height) / 2);
-      const url = this._getAuthUrl({ sso_mode: 'popup' });
+      const url = this._getAuthUrl(Object.assign({ sso_mode: 'popup' }, customOpts));
 
       const popup = window.open(
         url,
@@ -205,7 +229,7 @@
       } else {
         // Se o popup foi bloqueado pelo browser, recorre ao redirecionamento seguro
         console.warn('Popup bloqueado pelo browser. A recorrer a redirecionamento...');
-        this.redirect();
+        this.redirect(customOpts);
       }
       return popup;
     },
@@ -213,9 +237,9 @@
     /**
      * Redireciona a página inteira para o Account Services (fluxo tradicional de redirect).
      */
-    redirect: function () {
+    redirect: function (customOpts = {}) {
       const returnUrl = window.location.href.split('?')[0];
-      const url = this._getAuthUrl({ redirect_to: returnUrl });
+      const url = this._getAuthUrl(Object.assign({ redirect_to: returnUrl }, customOpts));
       window.location.href = url;
     },
 
@@ -242,6 +266,22 @@
      */
     isLoggedIn: function () {
       return this.getUser() !== null;
+    },
+
+    /**
+     * Devolve true se o utilizador concedeu acesso a dados bancários e a conta os possui.
+     */
+    hasBankingAccess: function () {
+      const user = this.getUser();
+      return Boolean(user && user.banking && user.banking.hasBanking);
+    },
+
+    /**
+     * Devolve os dados bancários autorizados do utilizador, ou null.
+     */
+    getBankingData: function () {
+      const user = this.getUser();
+      return (user && user.banking) ? user.banking : null;
     },
 
     /**

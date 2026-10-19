@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alternar Login ⇄ App · Account Services NAI</title>
+  <link rel="shortcut icon" href="favicon%20icon/Log%C3%B3tipo%20circular%20NAI%20azul-ciano.png">
+  <style>
+    :root {
+      --brand: #0080ff; --violet: #6b2cf5; --cyan: #16bcd4;
+      --bg: #eef3fb; --surface: #ffffff; --text: #0b1730; --muted: #56617a;
+      --line: rgba(11,23,48,.12);
+      --gradient: linear-gradient(120deg, #0080ff, #6b2cf5);
+      --shadow: 0 18px 45px rgba(11,23,48,.14);
+      --font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 32px 18px;
+      font-family: var(--font); color: var(--text); background: radial-gradient(1200px 600px at 15% -10%, rgba(0,128,255,.18), transparent 60%), radial-gradient(1000px 600px at 100% 0%, rgba(107,44,245,.16), transparent 55%), var(--bg);
+    }
+    .card {
+      width: min(680px, 100%); background: var(--surface); border: 1px solid var(--line);
+      border-radius: 24px; padding: clamp(26px, 5vw, 46px); box-shadow: var(--shadow);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .brand img { width: 42px; height: 42px; border-radius: 50%; }
+    .brand b { font-size: 16px; letter-spacing: .01em; }
+    h1 { font-size: clamp(24px, 4vw, 34px); line-height: 1.12; margin: 0 0 12px; letter-spacing: -.02em; }
+    p { color: var(--muted); line-height: 1.7; font-size: 15px; margin: 0 0 16px; }
+    code { background: rgba(0,128,255,.10); color: #0059b3; padding: 2px 7px; border-radius: 7px; font-size: 13px; font-weight: 700; }
+    .bm {
+      display: inline-flex; align-items: center; gap: 12px; margin: 10px 0 4px;
+      padding: 15px 26px; border-radius: 999px; text-decoration: none; cursor: grab;
+      background: var(--gradient); color: #fff; font-weight: 800; font-size: 15px;
+      box-shadow: 0 14px 30px rgba(0,128,255,.38);
+      transition: transform .18s ease, box-shadow .18s ease;
+      user-select: none;
+    }
+    .bm:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(107,44,245,.42); }
+    .bm:active { cursor: grabbing; }
+    .bm svg { width: 20px; height: 20px; }
+    .hint { font-size: 13px; }
+    kbd {
+      font-family: inherit; font-size: 12px; font-weight: 700; background: #0b1730; color: #fff;
+      border-radius: 6px; padding: 2px 6px;
+    }
+    .flow { display: grid; gap: 10px; margin: 22px 0 4px; }
+    .flow div { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); }
+    .dot { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,128,255,.12); color: #0059b3; font-size: 12px; font-weight: 800; }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <img src="favicon%20icon/Log%C3%B3tipo%20circular%20NAI%20azul-ciano.png" alt="NAI">
+      <b>Account Services NAI</b>
+    </div>
+
+    <h1>Alternar Login ⇄ App</h1>
+    <p>Arraste o botão abaixo para a <strong>barra de favoritos</strong> do navegador. Depois basta clicar nesse favorito em qualquer uma das páginas para saltar entre o <strong>ecrã de login</strong> (<code>sso-test.html</code>) e a <strong>aplicação</strong> (<code>intro/index.html</code>).</p>
+
+    <a class="bm" href="javascript:(function(){try{var p=location.pathname;var to=/\/intro\//.test(p)?'../sso-test.html?view=login':'intro/index.html';location.href=new URL(to,location.href).href;}catch(e){alert('Nao foi possivel alternar: '+e);}})()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      Alternar Login ⇄ App
+    </a>
+
+    <p class="hint">Barra de favoritos escondida? Mostre-a com <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> (Windows) ou <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> (Mac).</p>
+
+    <hr>
+
+    <div class="flow">
+      <div><span class="dot">1</span> Na página de login, ao iniciar sessão é redireccionado para <code>intro/index.html</code>.</div>
+      <div><span class="dot">2</span> O favorito leva-o de volta ao login com <code>?view=login</code> (mostra o ecrã de login mesmo com sessão ativa).</div>
+      <div><span class="dot">3</span> Pode iniciar sessão de novo a partir daí para voltar à aplicação.</div>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,144 @@
+/* ============================================================
+   Publicidade "Neuria" — cartão fixo no canto inferior direito.
+   Fica escondido (atributo [hidden]) e só aparece quando a estrela ✦
+   explode: o dashboard.js remove o [hidden] e acrescenta .is-visible.
+   Só existe na Home (o elemento #neuriaAd está no index.html).
+
+   O visual segue o mesmo "vidro azul" dos componentes da página
+   (barra de pesquisa / cartões — ver sky.css): fundo azul muito
+   translúcido, blur, contorno fino por dentro e sombra suave, sobre
+   o céu escuro. Texto claro e destaque no azul da página (#8ab4f8).
+   ============================================================ */
+
+.neuria-ad {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 16px 18px 18px;
+  border-radius: 24px;
+  color: #e3e3e3;
+  font-family: "Google Sans Text", "Google Sans", Roboto, Arial, sans-serif;
+  text-align: left;
+  background-color: rgba(96, 165, 250, 0.16);
+  background-image: linear-gradient(180deg, rgba(191, 219, 254, 0.18), rgba(59, 130, 246, 0.08));
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  box-shadow:
+    inset 0 0 0 1px rgba(191, 219, 254, 0.3),
+    0 6px 18px rgba(6, 20, 60, 0.3);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity .45s ease, transform .5s cubic-bezier(.2, .9, .3, 1.04);
+  pointer-events: none;
+}
+
+.neuria-ad.is-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* Linha da marca: logótipo + nome + etiqueta "IA". */
+.neuria-ad__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-right: 28px;              /* deixa espaço para o botão fechar */
+}
+
+.neuria-ad__logo {
+  display: block;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.neuria-ad__name {
+  font-family: "Google Sans", "Google Sans Display", Roboto, Arial, sans-serif;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: .1px;
+  color: #eef4ff;
+}
+
+.neuria-ad__tagbadge {
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #cfe0ff;
+  background: rgba(138, 180, 248, 0.18);
+  border: 1px solid rgba(138, 180, 248, 0.38);
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.neuria-ad__text {
+  margin: 12px 0 15px;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #c4c7c5;
+}
+
+.neuria-ad__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: "Google Sans Text", "Google Sans", Roboto, Arial, sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: .2px;
+  color: #05122a;
+  padding: 11px 16px;
+  border-radius: 24px;
+  background: #8ab4f8;
+  box-shadow: 0 2px 8px rgba(6, 20, 60, 0.35);
+  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.neuria-ad__cta:hover {
+  filter: brightness(1.07);
+  box-shadow: 0 6px 18px rgba(6, 20, 60, 0.45);
+}
+
+.neuria-ad__cta:active { transform: translateY(1px); }
+
+.neuria-ad__close {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #c4c7c5;
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.neuria-ad__close:hover {
+  background: rgba(191, 219, 254, 0.16);
+  color: #eef4ff;
+}
+
+/* Quem pediu menos movimento: aparece sem deslizar. */
+@media (prefers-reduced-motion: reduce) {
+  .neuria-ad { transition: opacity .2s ease; transform: none; }
+  .neuria-ad__cta { transition: none; }
+}

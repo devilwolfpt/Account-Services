@@ -11,8 +11,9 @@
 const SSO_SESSION_KEY = 'as_sso_session';
 const SSO_TOKEN_VERSION = 1;
 
-/** Gera um token SSO auto-contido (base64 JSON). Não criptográfico — adequado para sites estáticos. */
-function generateSSOToken(user) {
+/** Gera um token SSO auto-contido (base64 JSON). Suporta scopes de perfil e bancários. */
+function generateSSOToken(user, scopes = ['profile', 'email']) {
+  const cards = Array.isArray(user.paymentCards) ? user.paymentCards : (user.paymentCard ? [user.paymentCard] : []);
   const payload = {
     v: SSO_TOKEN_VERSION,
     name: user.name,
@@ -23,9 +24,14 @@ function generateSSOToken(user) {
     gender: user.gender || null,
     picture: user.picture || null,
     provider: user.provider || 'nai',
+    scopes: Array.isArray(scopes) ? scopes : ['profile', 'email'],
+    paymentCards: cards,
+    paymentCard: cards[0] || null,
+    banking: user.banking || (cards.length > 0 ? { hasBanking: true, balance: 0, currency: 'EUR', bankName: cards[0].brand } : null),
     iat: Date.now(),
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 dias
   };
+
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
 }
 
@@ -41,9 +47,50 @@ function verifySSOToken(token) {
   }
 }
 
+/**
+ * Validação Bancária Oficial - Algoritmo de Luhn (ISO/IEC 7812)
+ * Garante que o número de cartão existe matematicamente e não é falso.
+ */
+function validateLuhn(digits) {
+  if (!digits || digits.length < 13 || digits.length > 19) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let digit = parseInt(digits.charAt(i), 10);
+    if (isNaN(digit)) return false;
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return (sum % 10) === 0;
+}
+
+/**
+ * Deteta o emissor bancário real do cartão (IIN / BIN).
+ * Rejeita cartões fictícios ou prefixos não autorizados.
+ */
+function detectRealBrand(cleanNumber) {
+  if (/^4[0-9]{12}(?:[0-9]{3})?$/.test(cleanNumber)) return 'Visa';
+  if (/^(?:5[1-5][0-9]{2}|222[1-9]|22[3-9][0-9]|2[3-6][0-9]{2}|27[01][0-9]|2720)[0-9]{12}$/.test(cleanNumber)) return 'Mastercard';
+  if (/^3[47][0-9]{13}$/.test(cleanNumber)) return 'American Express';
+  if (/^6(?:011|5[0-9]{2}|4[4-9][0-9])[0-9]{12}$/.test(cleanNumber)) return 'Discover';
+  if (/^(5018|5020|5038|5893|6304|6759|6761|6762|6763)[0-9]{8,15}$/.test(cleanNumber)) return 'Maestro';
+  if (/^(606282|3841)[0-9]{10,13}$/.test(cleanNumber)) return 'Hipercard';
+  if (/^35(?:2[89]|[3-8][0-9])[0-9]{12}$/.test(cleanNumber)) return 'JCB';
+  // Prefixo durante digitação
+  if (/^4/.test(cleanNumber)) return 'Visa';
+  if (/^(5[1-5]|2[2-7])/.test(cleanNumber)) return 'Mastercard';
+  if (/^3[47]/.test(cleanNumber)) return 'American Express';
+  if (/^6/.test(cleanNumber)) return 'Discover';
+  return null;
+}
+
 /** Guarda a sessão activa no localStorage desta origem. */
-function saveSession(user) {
-  const token = generateSSOToken(user);
+function saveSession(user, scopes) {
+  const token = generateSSOToken(user, scopes);
   localStorage.setItem(SSO_SESSION_KEY, token);
   return token;
 }
@@ -68,6 +115,13 @@ function redirectToApp(redirectUrl, token, user) {
   url.searchParams.set('sso_email', user.email || '');
   url.searchParams.set('sso_provider', user.provider || 'email');
   if (user.picture) url.searchParams.set('sso_picture', user.picture);
+  if (user.banking && user.banking.hasBanking) {
+    try {
+      url.searchParams.set('sso_bank_name', user.banking.bankName || '');
+      url.searchParams.set('sso_iban', user.banking.iban || '');
+      url.searchParams.set('sso_balance', String(user.banking.balance || 0));
+    } catch (e) {}
+  }
   window.location.href = url.toString();
 }
 
@@ -91,6 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const ssoAppLogo   = ssoParams.get('app_logo') || '';
   const isPopupMode  = Boolean(window.opener || ssoParams.get('sso_mode') === 'popup');
   const isSSORequest = Boolean(ssoRedirectTo || isPopupMode);
+  const rawScopes = ssoParams.get('scopes') || ssoParams.get('scope') || 'profile,email';
+  const requestedScopes = rawScopes.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const requiresBanking = requestedScopes.some(s => s === 'banking' || s === 'financial' || s === 'financial_banking');
 
   const ssoAuthScreen          = document.getElementById('ssoAuthScreen');
   const interactiveDisplay     = document.getElementById('interactiveDisplay');
@@ -145,6 +202,49 @@ document.addEventListener('DOMContentLoaded', () => {
       if (iconEl) iconEl.innerHTML = `<img src="${ssoAppLogo}" alt="${appDisplayName}">`;
     }
 
+
+
+    // Mostra/oculta linha de permissão bancária de acordo com o pedido da app
+    const ssoPermBankingRow = document.getElementById('ssoPermBankingRow');
+    if (ssoPermBankingRow) {
+      ssoPermBankingRow.style.display = requiresBanking ? 'flex' : 'none';
+    }
+
+    const ssoRequiredBankingPanel = document.getElementById('ssoRequiredBankingPanel');
+    const ssoDefaultActionButtons = document.getElementById('ssoDefaultActionButtons');
+    const ssoBankingActionButtons = document.getElementById('ssoBankingActionButtons');
+    const ssoSaveBankingAndAuthBtn = document.getElementById('ssoSaveBankingAndAuthBtn');
+    const ssoCancelBankingBtn = document.getElementById('ssoCancelBankingBtn');
+    const ssoBankingAppName = document.getElementById('ssoBankingAppName');
+    if (ssoBankingAppName) ssoBankingAppName.textContent = appDisplayName;
+
+    // Função para registar a app nas Apps Associadas da conta do utilizador
+    async function registerAuthorizedApp(userObj, scopes) {
+      if (!userObj.authorizedApps) userObj.authorizedApps = [];
+      const clientId = ssoParams.get('client_id') || ssoAppName || 'app_' + Date.now();
+      const existingIdx = userObj.authorizedApps.findIndex(a => a.clientId === clientId || a.appName === appDisplayName);
+      const appEntry = {
+        clientId: clientId,
+        appName: appDisplayName,
+        appLogo: ssoAppLogo || null,
+        authorizedAt: new Date().toISOString(),
+        scopes: scopes,
+        permissions: {
+          readProfile: true,
+          readEmail: true,
+          readBanking: scopes.some(s => s === 'banking' || s === 'financial' || s === 'financial_banking'),
+          readTransactions: scopes.some(s => s === 'banking' || s === 'financial' || s === 'financial_banking')
+        }
+      };
+      if (existingIdx >= 0) {
+        userObj.authorizedApps[existingIdx] = appEntry;
+      } else {
+        userObj.authorizedApps.push(appEntry);
+      }
+      await NaiDB.saveUser(userObj);
+      saveSession(userObj, scopes);
+    }
+
     // Verifica se já existe uma sessão ativa
     const existingSession = getSession();
 
@@ -162,14 +262,275 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (ssoAllowBtnText) ssoAllowBtnText.textContent = `Continuar como ${existingSession.name || 'Utilizador'}`;
       if (ssoSwitchAccountWrapper) ssoSwitchAccountWrapper.style.display = 'block';
+    } else {
+      if (ssoActiveAccount) ssoActiveAccount.style.display = 'none';
+      if (ssoSwitchAccountWrapper) ssoSwitchAccountWrapper.style.display = 'none';
+      if (ssoAllowBtnText) ssoAllowBtnText.textContent = 'Permitir acesso';
+    }
 
-      // Clicar em Permitir quando já tem sessão: autoriza e conclui de imediato
-      if (ssoAllowBtn) {
-        ssoAllowBtn.addEventListener('click', () => {
+    // ─── SSO Banking Panel: wizard 4 etapas compactas (Cartão → Banco → Morada → Fiscal) ───
+    const ssoCardNumEl   = document.getElementById('ssoReqCardNum');
+    const ssoCardExpEl   = document.getElementById('ssoReqCardExp');
+    const ssoCardCvcEl   = document.getElementById('ssoReqCardCvc');
+    const ssoCardHintEl  = document.getElementById('ssoReqCardBrandHint');
+    const ssoBankStep1El = document.getElementById('ssoBankingStep1');
+    const ssoBankStep2El = document.getElementById('ssoBankingStep2');
+    const ssoBankStep3El = document.getElementById('ssoBankingStep3');
+    const ssoBankStep4El = document.getElementById('ssoBankingStep4');
+    const ssoBankTitleEl = document.getElementById('ssoBankingPanelTitle');
+    const ssoBankBarEl   = document.getElementById('ssoBankBar');
+    const ssoBankBar2El  = document.getElementById('ssoBankBar2');
+    const ssoBankBar3El  = document.getElementById('ssoBankBar3');
+    const ssoBankDot1El  = document.getElementById('ssoBankDot1');
+    const ssoBankDot2El  = document.getElementById('ssoBankDot2');
+    const ssoBankDot3El  = document.getElementById('ssoBankDot3');
+    const ssoBankDot4El  = document.getElementById('ssoBankDot4');
+
+    function setSSOBankStep(step) {
+      if (ssoBankStep1El) ssoBankStep1El.style.display = step === 1 ? 'block' : 'none';
+      if (ssoBankStep2El) ssoBankStep2El.style.display = step === 2 ? 'block' : 'none';
+      if (ssoBankStep3El) ssoBankStep3El.style.display = step === 3 ? 'block' : 'none';
+      if (ssoBankStep4El) ssoBankStep4El.style.display = step === 4 ? 'block' : 'none';
+
+      const titles = {
+        1: 'Dados do Cartão (1/4)',
+        2: 'Conta Bancária (2/4)',
+        3: 'Morada de Faturação (3/4)',
+        4: 'Dados Fiscais & Finalizar (4/4)'
+      };
+      if (ssoBankTitleEl) ssoBankTitleEl.textContent = titles[step] || 'Dados Bancários';
+
+      if (ssoBankDot1El) { ssoBankDot1El.style.background = '#0080ff'; ssoBankDot1El.style.color = '#fff'; }
+      if (ssoBankDot2El) { ssoBankDot2El.style.background = step >= 2 ? '#0080ff' : 'rgba(0,128,255,0.15)'; ssoBankDot2El.style.color = step >= 2 ? '#fff' : '#0080ff'; }
+      if (ssoBankDot3El) { ssoBankDot3El.style.background = step >= 3 ? '#0080ff' : 'rgba(0,128,255,0.15)'; ssoBankDot3El.style.color = step >= 3 ? '#fff' : '#0080ff'; }
+      if (ssoBankDot4El) { ssoBankDot4El.style.background = step >= 4 ? '#0080ff' : 'rgba(0,128,255,0.15)'; ssoBankDot4El.style.color = step >= 4 ? '#fff' : '#0080ff'; }
+
+      if (ssoBankBarEl)  ssoBankBarEl.style.width  = step >= 2 ? '100%' : '0%';
+      if (ssoBankBar2El) ssoBankBar2El.style.width = step >= 3 ? '100%' : '0%';
+      if (ssoBankBar3El) ssoBankBar3El.style.width = step >= 4 ? '100%' : '0%';
+    }
+    window.setSSOBankStep = setSSOBankStep;
+
+    // Clicar em Permitir / Continuar
+    if (ssoAllowBtn) {
+      ssoAllowBtn.addEventListener('click', async () => {
+        const curSession = getSession();
+        if (curSession) {
+          const freshUser = (await NaiDB.findUser(curSession.email)) || curSession;
+
+          // Se a app exige dados bancários e o utilizador ainda não os tem registados:
+          const hasFinancialSetup = Boolean((freshUser.banking && freshUser.banking.hasBanking) || (freshUser.paymentCards && freshUser.paymentCards.length > 0) || (freshUser.paymentCard && freshUser.paymentCard.number));
+          if (requiresBanking && !hasFinancialSetup) {
+            const ssoConsentInitialView = document.getElementById('ssoConsentInitialView');
+            if (ssoConsentInitialView) ssoConsentInitialView.style.display = 'none';
+            if (ssoRequiredBankingPanel) ssoRequiredBankingPanel.style.display = 'block';
+            setSSOBankStep(1);
+            showToast(`A aplicação ${appDisplayName} requer os seus dados bancários para o login.`, 'info');
+            return;
+          }
+
+          // Concede acesso e associa a app à conta
+          await registerAuthorizedApp(freshUser, requestedScopes);
           showToast(`Acesso concedido a ${appDisplayName}! A ligar...`, 'success');
-          const token = localStorage.getItem(SSO_SESSION_KEY) || generateSSOToken(existingSession);
-          setTimeout(() => sendAuthToExternalApp(token, existingSession), 700);
+          const token = generateSSOToken(freshUser, requestedScopes);
+          setTimeout(() => sendAuthToExternalApp(token, freshUser), 700);
+        } else {
+          // Sem sessão ativa: abre tela de login/criar conta normal
+          ssoAuthScreen.style.display = 'none';
+          if (interactiveDisplay) interactiveDisplay.style.display = 'flex';
+          showToast(`Acesso autorizado! Faça login ou crie conta para aceder a ${appDisplayName}`, 'info');
+        }
+      });
+    }
+
+      // Formatação ao vivo do número do cartão + hint de emissor
+      if (ssoCardNumEl) {
+        ssoCardNumEl.addEventListener('input', () => {
+          const raw = ssoCardNumEl.value.replace(/\D/g, '').substring(0, 16);
+          const parts = [];
+          for (let i = 0; i < raw.length; i += 4) parts.push(raw.substring(i, i + 4));
+          ssoCardNumEl.value = parts.join(' ');
+          const issuer = detectRealBrand(raw);
+          if (ssoCardHintEl) {
+            if (issuer) {
+              ssoCardHintEl.textContent = `✓ Emissor: ${issuer}`;
+              ssoCardHintEl.style.color = '#10b981';
+            } else if (raw.length >= 4) {
+              ssoCardHintEl.textContent = '✗ Prefixo de cartão não reconhecido';
+              ssoCardHintEl.style.color = '#ef4444';
+            } else {
+              ssoCardHintEl.textContent = '';
+            }
+          }
         });
+      }
+      if (ssoCardExpEl) {
+        ssoCardExpEl.addEventListener('input', () => {
+          const raw = ssoCardExpEl.value.replace(/\D/g, '').substring(0, 4);
+          ssoCardExpEl.value = raw.length >= 2 ? raw.substring(0, 2) + '/' + raw.substring(2) : raw;
+        });
+      }
+
+      // Etapa 1 -> Etapa 2 (Valida cartão de pagamento)
+      const ssoBankNext1Btn = document.getElementById('ssoBankingNext1Btn');
+      if (ssoBankNext1Btn) {
+        ssoBankNext1Btn.addEventListener('click', () => {
+          const cardNumRaw = (ssoCardNumEl?.value || '').replace(/\s+/g, '');
+          const cardExp    = (ssoCardExpEl?.value || '').trim();
+          const cardCvc    = (ssoCardCvcEl?.value || '').trim();
+          const cardHolder = (document.getElementById('ssoReqCardHolder')?.value || '').trim();
+
+          const issuer = detectRealBrand(cardNumRaw);
+          if (!issuer) { showToast('Cartão não reconhecido. Insira um Visa, Mastercard, Amex, etc.', 'error'); ssoCardNumEl?.focus(); return; }
+          if (!validateLuhn(cardNumRaw)) { showToast('Número de cartão inválido (falha na verificação bancária).', 'error'); ssoCardNumEl?.focus(); return; }
+
+          const expParts = cardExp.split('/');
+          const mm = parseInt(expParts[0], 10), yy = parseInt(expParts[1], 10);
+          const nowY = new Date().getFullYear() % 100, nowM = new Date().getMonth() + 1;
+          if (expParts.length !== 2 || isNaN(mm) || isNaN(yy) || mm < 1 || mm > 12 || yy < nowY || (yy === nowY && mm < nowM)) {
+            showToast('Data de validade inválida ou expirada.', 'error'); ssoCardExpEl?.focus(); return;
+          }
+          if (cardCvc.length < 3) { showToast('CVC inválido (mínimo 3 dígitos).', 'error'); ssoCardCvcEl?.focus(); return; }
+          if (!cardHolder || cardHolder.length < 3) { showToast('Nome do titular necessário.', 'error'); return; }
+
+          setSSOBankStep(2);
+        });
+      }
+
+      // Etapa 2 Navegação
+      const ssoBankBack2Btn = document.getElementById('ssoBankingBack2Btn');
+      if (ssoBankBack2Btn) ssoBankBack2Btn.addEventListener('click', () => setSSOBankStep(1));
+
+      const ssoBankNext2Btn = document.getElementById('ssoBankingNext2Btn');
+      if (ssoBankNext2Btn) ssoBankNext2Btn.addEventListener('click', () => setSSOBankStep(3));
+
+      const ssoBankSkip2Btn = document.getElementById('ssoBankingSkip2Btn');
+      if (ssoBankSkip2Btn) ssoBankSkip2Btn.addEventListener('click', () => setSSOBankStep(3));
+
+      // Etapa 3 Navegação (Valida Morada)
+      const ssoBankBack3Btn = document.getElementById('ssoBankingBack3Btn');
+      if (ssoBankBack3Btn) ssoBankBack3Btn.addEventListener('click', () => setSSOBankStep(2));
+
+      const ssoBankNext3Btn = document.getElementById('ssoBankingNext3Btn');
+      if (ssoBankNext3Btn) {
+        ssoBankNext3Btn.addEventListener('click', () => {
+          const address    = (document.getElementById('ssoReqAddress')?.value   || '').trim();
+          const postalCode = (document.getElementById('ssoReqPostalCode')?.value || '').trim();
+          const city       = (document.getElementById('ssoReqCity')?.value       || '').trim();
+
+          if (!address) { showToast('Endereço obrigatório.', 'error'); document.getElementById('ssoReqAddress')?.focus(); return; }
+          if (!postalCode) { showToast('Código postal obrigatório.', 'error'); document.getElementById('ssoReqPostalCode')?.focus(); return; }
+          if (!city) { showToast('Cidade obrigatória.', 'error'); document.getElementById('ssoReqCity')?.focus(); return; }
+
+          setSSOBankStep(4);
+        });
+      }
+
+      // Etapa 4 Navegação
+      const ssoBankBack4Btn = document.getElementById('ssoBankingBack4Btn');
+      if (ssoBankBack4Btn) ssoBankBack4Btn.addEventListener('click', () => setSSOBankStep(3));
+
+      // Botão "GUARDAR & ENTRAR" — Validação final e Gravação
+      if (ssoSaveBankingAndAuthBtn) {
+        ssoSaveBankingAndAuthBtn.addEventListener('click', async () => {
+          const cardNumRaw = (ssoCardNumEl?.value || '').replace(/\s+/g, '');
+          const cardExp    = (ssoCardExpEl?.value || '').trim();
+          const cardCvc    = (ssoCardCvcEl?.value || '').trim();
+          const cardHolder = (document.getElementById('ssoReqCardHolder')?.value || '').trim();
+          const issuer     = detectRealBrand(cardNumRaw);
+
+          if (!issuer || !validateLuhn(cardNumRaw)) {
+            showToast('Dados do cartão inválidos. Volte à etapa 1.', 'error');
+            setSSOBankStep(1);
+            return;
+          }
+
+          // Dados complementares da Etapa 1 (tipo, banco, iban, saldo)
+          const cardType   = (document.getElementById('ssoReqCardType')?.value  || 'Débito').trim();
+          const bankName   = (document.getElementById('ssoReqBankName')?.value  || '').trim();
+          const rawBal     = parseFloat(document.getElementById('ssoReqBalance')?.value) || 0;
+          const iban       = (document.getElementById('ssoReqIban')?.value      || '').trim();
+
+          // Dados da morada e fiscais (Etapa 2)
+          const country    = (document.getElementById('ssoReqCountry')?.value   || 'Portugal').trim();
+          const address    = (document.getElementById('ssoReqAddress')?.value   || '').trim();
+          const apartment  = (document.getElementById('ssoReqApartment')?.value || '').trim();
+          const postalCode = (document.getElementById('ssoReqPostalCode')?.value || '').trim();
+          const city       = (document.getElementById('ssoReqCity')?.value       || '').trim();
+          const nif        = (document.getElementById('ssoReqNif')?.value        || '').trim();
+          const phone      = (document.getElementById('ssoReqPhone')?.value      || '').trim();
+
+          if (!address) { showToast('Endereço obrigatório.', 'error'); document.getElementById('ssoReqAddress')?.focus(); return; }
+          if (!postalCode) { showToast('Código postal obrigatório.', 'error'); document.getElementById('ssoReqPostalCode')?.focus(); return; }
+          if (!city) { showToast('Cidade obrigatória.', 'error'); document.getElementById('ssoReqCity')?.focus(); return; }
+
+          const last4 = cardNumRaw.slice(-4);
+          const newCard = {
+            id:              'card_' + Date.now(),
+            brand:           issuer,
+            cardType:        cardType,
+            cardNumberMasked: `•••• •••• •••• ${last4}`,
+            last4,
+            expiry:          cardExp,
+            holder:          cardHolder.toUpperCase(),
+            bankName:        bankName || issuer,
+            iban:            iban || null,
+            balance:         rawBal,
+            billingAddress: {
+              country,
+              address,
+              apartment,
+              postalCode,
+              city,
+              nif: nif || null,
+              phone: phone || null,
+              formatted: [address, apartment, postalCode, city, country].filter(Boolean).join(', ')
+            },
+            isDefault: true,
+            addedAt: new Date().toISOString()
+          };
+
+          const curSession = getSession() || existingSession;
+          if (!curSession || !curSession.email) {
+            showToast('Sessão não encontrada. Por favor inicie sessão.', 'error');
+            return;
+          }
+          const freshUser = (await NaiDB.findUser(curSession.email)) || curSession;
+          if (!Array.isArray(freshUser.paymentCards)) freshUser.paymentCards = [];
+          freshUser.paymentCards.push(newCard);
+
+          freshUser.banking = freshUser.banking || {};
+          freshUser.banking.hasBanking = true;
+          freshUser.banking.bankName   = bankName || issuer;
+          freshUser.banking.iban       = iban || freshUser.banking.iban || null;
+          freshUser.banking.balance    = rawBal > 0 ? rawBal : (freshUser.banking.balance || 0);
+          freshUser.banking.currency   = 'EUR';
+          freshUser.banking.nif        = nif || freshUser.banking.nif || null;
+          freshUser.banking.phone      = phone || freshUser.banking.phone || null;
+          freshUser.banking.linkedAt   = new Date().toISOString();
+
+          await NaiDB.saveUser(freshUser);
+          await registerAuthorizedApp(freshUser, requestedScopes);
+
+          showToast('Dados bancários e cartão guardados com sucesso na sua conta!', 'success');
+          const token = generateSSOToken(freshUser, requestedScopes);
+          setTimeout(() => sendAuthToExternalApp(token, freshUser), 700);
+        });
+      }
+
+      function closeBankingAndReturnToConsent() {
+        if (ssoRequiredBankingPanel) ssoRequiredBankingPanel.style.display = 'none';
+        const ssoConsentInitialView = document.getElementById('ssoConsentInitialView');
+        if (ssoConsentInitialView) ssoConsentInitialView.style.display = 'block';
+        if (ssoDefaultActionButtons) ssoDefaultActionButtons.style.display = 'flex';
+      }
+
+      if (ssoCancelBankingBtn) {
+        ssoCancelBankingBtn.addEventListener('click', closeBankingAndReturnToConsent);
+      }
+      const ssoCancelBankingBtn1 = document.getElementById('ssoCancelBankingBtn1');
+      if (ssoCancelBankingBtn1) {
+        ssoCancelBankingBtn1.addEventListener('click', closeBankingAndReturnToConsent);
       }
 
       // Clicar em "Iniciar com outra conta": fecha o consentimento e abre a tela de login normal
@@ -180,23 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast(`Inicie sessão para autorizar ${appDisplayName}`, 'info');
         });
       }
-
-    } else {
-      // Não tem sessão ativa: o botão Permitir avança para a tela de login/criar conta normal!
-      if (ssoActiveAccount) ssoActiveAccount.style.display = 'none';
-      if (ssoSwitchAccountWrapper) ssoSwitchAccountWrapper.style.display = 'none';
-      if (ssoAllowBtnText) ssoAllowBtnText.textContent = 'Permitir acesso';
-
-      if (ssoAllowBtn) {
-        ssoAllowBtn.addEventListener('click', () => {
-          // Esconde ecrã de consentimento (Passo 1 concluído)
-          ssoAuthScreen.style.display = 'none';
-          // Revela a tela de login e criar conta normal (Passo 2)
-          if (interactiveDisplay) interactiveDisplay.style.display = 'flex';
-          showToast(`Acesso autorizado! Faça login ou crie conta para aceder a ${appDisplayName}`, 'info');
-        });
-      }
-    }
 
     // Botão Cancelar: fecha o popup ou volta para trás
     if (ssoCancelBtn) {
@@ -236,9 +580,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Steppers
   const stepperBars = document.querySelectorAll('.stepper-bar');
   let currentStep = 1;
-  const totalSteps = 4;
+  const totalSteps = 5;
   // Dados guardados em memória por passo (evita problema de inputs ocultos)
-  let _savedRegData = { firstName: '', lastName: '', birth: '', gender: '', username: '' };
+  let _savedRegData = {
+    firstName: '',
+    lastName: '',
+    birth: '',
+    gender: '',
+    username: '',
+    passHash: '',
+    bankName: '',
+    iban: '',
+    balance: 0,
+    hasBanking: false
+  };
 
   /* ==========================================================================
      1. CONTROLE DO MODO DESENVOLVEDOR (ATIVADO VIA BOOKMARKLET)
@@ -348,13 +703,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ==========================================================================
-     4. STEPPER CONTROLLER — 4 PASSOS REAIS DE REGISTO
+     4. STEPPER CONTROLLER — 5 PASSOS DE REGISTO (INCLUINDO CARTEIRA BANCÁRIA)
      ========================================================================== */
   function setRegisterStep(step) {
     if (step < 1 || step > totalSteps) return;
     currentStep = step;
     // Limpar dados guardados se voltar ao início
-    if (step === 1) _savedRegData = { firstName: '', lastName: '', birth: '', gender: '', username: '' };
+    if (step === 1) {
+      _savedRegData = {
+        firstName: '', lastName: '', birth: '', gender: '', username: '', passHash: '',
+        bankName: '', iban: '', balance: 0, hasBanking: false
+      };
+    }
 
     // Atualiza badges em todas as barras de passos
     stepperBars.forEach(bar => {
@@ -365,25 +725,25 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Atualiza panes no formulário deslizante
-    for (let i = 1; i <= 4; i++) {
+    // Atualiza panes no formulário deslizante (1 a 5)
+    for (let i = 1; i <= 5; i++) {
       const pane = document.getElementById(`sliderPaneStep${i}`);
       if (pane) pane.style.display = (i === currentStep) ? 'flex' : 'none';
     }
 
-    // Atualiza panes no formulário lado a lado
-    for (let i = 1; i <= 4; i++) {
+    // Atualiza panes no formulário lado a lado (1 a 5)
+    for (let i = 1; i <= 5; i++) {
       const pane = document.getElementById(`sidePaneStep${i}`);
       if (pane) pane.style.display = (i === currentStep) ? 'flex' : 'none';
     }
 
-    // Botões Anterior
+    // Botões Anterior padrão (para passos 1 a 4)
     const btnSliderPrev = document.getElementById('btnSliderRegPrev');
     const btnSidePrev = document.getElementById('btnSideRegPrev');
     if (btnSliderPrev) btnSliderPrev.style.display = currentStep > 1 ? 'inline-flex' : 'none';
     if (btnSidePrev) btnSidePrev.style.display = currentStep > 1 ? 'inline-flex' : 'none';
 
-    // Texto do Botão Submeter
+    // Texto do Botão Submeter padrão
     if (btnSliderRegSubmit) {
       const label = btnSliderRegSubmit.querySelector('span');
       if (label) label.textContent = currentStep === totalSteps ? 'CRIAR CONTA' : 'SEGUINTE';
@@ -393,6 +753,61 @@ document.addEventListener('DOMContentLoaded', () => {
       const label = btnSideRegSubmit.querySelector('span');
       if (label) label.textContent = currentStep === totalSteps ? 'CRIAR CONTA' : 'SEGUINTE';
     }
+
+    // Controlo de visibilidade do Passo 5 (Carteira em 4 sub-etapas independentes)
+    // Oculta a barra inferior para que nada seja cortado ou duplicado
+    const sliderSubmitContainer = document.querySelector('#sliderRegisterPanel .btn-submit-container');
+    const sideSubmitContainer = document.querySelector('.card-register-flow .btn-submit-wrapper') || document.querySelector('.card-register-flow .btn-submit-container');
+    const sliderNavRow = document.querySelector('#sliderRegisterPanel .stepper-nav-row');
+    const sideNavRow = document.querySelector('.card-register-flow .stepper-nav-row');
+
+    if (currentStep === 5) {
+      if (sliderSubmitContainer) sliderSubmitContainer.style.display = 'none';
+      if (sideSubmitContainer) sideSubmitContainer.style.display = 'none';
+      if (sliderNavRow) sliderNavRow.style.display = 'none';
+      if (sideNavRow) sideNavRow.style.display = 'none';
+      setRegisterBankSubStep('slider', 1);
+      setRegisterBankSubStep('side', 1);
+    } else {
+      if (sliderSubmitContainer) sliderSubmitContainer.style.display = 'flex';
+      if (sideSubmitContainer) sideSubmitContainer.style.display = 'flex';
+      if (sliderNavRow) sliderNavRow.style.display = 'flex';
+      if (sideNavRow) sideNavRow.style.display = 'flex';
+    }
+  }
+
+  // ─── Sub-etapas compactas do Passo 5 da Criação de Conta (1 a 4) ───
+  const currentRegBankSubStep = { slider: 1, side: 1 };
+
+  function setRegisterBankSubStep(prefix, subStep) {
+    currentRegBankSubStep[prefix] = subStep;
+
+    for (let s = 1; s <= 4; s++) {
+      const stepEl = document.getElementById(`${prefix}BankStep${s}`);
+      if (stepEl) stepEl.style.display = (s === subStep) ? 'block' : 'none';
+
+      const dotEl = document.getElementById(`${prefix}BankDot${s}`);
+      if (dotEl) {
+        dotEl.style.background = (s <= subStep) ? '#0080ff' : 'rgba(0,128,255,0.15)';
+        dotEl.style.color = (s <= subStep) ? '#fff' : '#0080ff';
+      }
+    }
+
+    const bar1 = document.getElementById(`${prefix}BankBar1`);
+    const bar2 = document.getElementById(`${prefix}BankBar2`);
+    const bar3 = document.getElementById(`${prefix}BankBar3`);
+    if (bar1) bar1.style.width = subStep >= 2 ? '100%' : '0%';
+    if (bar2) bar2.style.width = subStep >= 3 ? '100%' : '0%';
+    if (bar3) bar3.style.width = subStep >= 4 ? '100%' : '0%';
+
+    const titleEl = document.getElementById(`${prefix}BankTitle`);
+    const titles = {
+      1: 'Dados do Cartão (1/4)',
+      2: 'Conta Bancária (2/4)',
+      3: 'Morada de Faturação (3/4)',
+      4: 'Dados Fiscais & Finalizar (4/4)'
+    };
+    if (titleEl) titleEl.textContent = titles[subStep] || 'Carteira';
   }
 
   // Navegação ao clicar nos badges das barras (para passos anteriores já alcançados)
@@ -428,9 +843,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ==========================================================================
      5. MOTOR DE BASE DE DADOS NAI & DOMÍNIO @NAI.COM
-     - Domínio próprio de e-mail: @nai.com (como Google, Outlook e Sapo)
+     - Domínio próprio de e-mail: @nai.com (como Nai, Outlook e Sapo)
      - Armazenamento Seguro: Hashes SHA-256 com Salt (Web Crypto API)
-     - Nuvem Gratuita da Google: Cloud Firestore (Firebase Spark Plan) + Fallback Local
+     - Nuvem Gratuita da Nai: Cloud Firestore (Firebase Spark Plan) + Fallback Local
      ========================================================================== */
   const NAI_DOMAIN = '@nai.com';
   const DB_KEY = 'nai_accounts_secure_v4';
@@ -470,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'h_' + Math.abs(hash).toString(16);
   }
 
-  // Inicialização segura do Google Firebase Cloud Firestore & Analytics
+  // Inicialização segura do Nai Firebase Cloud Firestore & Analytics
   let firestoreDb = null;
   if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) {
     try {
@@ -481,9 +896,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try { firebase.analytics(); } catch (e) { /* analytics opcional em dev/localhost */ }
       }
       firestoreDb = firebase.firestore();
-      console.log('⚡ Base de Dados Google Cloud Firestore conectada com sucesso! Projeto:', window.FIREBASE_CONFIG.projectId);
+      console.log('⚡ Base de Dados Nai Cloud Firestore conectada com sucesso! Projeto:', window.FIREBASE_CONFIG.projectId);
     } catch (err) {
-      console.warn('Google Firebase: inicialização em modo de espera local.', err);
+      console.warn('Nai Firebase: inicialização em modo de espera local.', err);
     }
   }
 
@@ -539,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       this.saveLocalUsers(list);
 
-      // 2. Sincronizar com a nuvem Google Cloud Firestore se configurada
+      // 2. Sincronizar com a nuvem Nai Cloud Firestore se configurada
       if (firestoreDb) {
         try {
           const docId = normalizedEmail.replace(/[/.]/g, '_');
@@ -558,14 +973,18 @@ document.addEventListener('DOMContentLoaded', () => {
             passwordHash: userToSave.passwordHash || '',
             provider: userToSave.provider || 'nai',
             picture: userToSave.picture || null,
+            paymentCards: Array.isArray(userToSave.paymentCards) ? userToSave.paymentCards : (userToSave.paymentCard ? [userToSave.paymentCard] : []),
+            paymentCard: userToSave.paymentCard || (Array.isArray(userToSave.paymentCards) && userToSave.paymentCards[0] ? userToSave.paymentCards[0] : null),
+            banking: userToSave.banking || { hasBanking: false, balance: 0, currency: 'EUR' },
+            authorizedApps: userToSave.authorizedApps || [],
             createdAt: userToSave.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
 
           await docRef.set(firestorePayload, { merge: true });
-          console.log('✅ Utilizador completo sincronizado na Nuvem Google Firestore:', normalizedEmail, firestorePayload);
+          console.log('✅ Utilizador completo sincronizado na Nuvem Nai Firestore:', normalizedEmail, firestorePayload);
         } catch (err) {
-          console.error('❌ Erro ao sincronizar com Google Firestore:', err.code || '', err.message || err);
+          console.error('❌ Erro ao sincronizar com Nai Firestore:', err.code || '', err.message || err);
           console.warn('💡 Verifique: (1) Regras do Firestore permitem escrita, (2) não está a usar file://, (3) credenciais corretas.');
         }
       }
@@ -579,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const normalized = formatNaiEmail(emailOrUsername);
       const raw = emailOrUsername.trim().toLowerCase();
 
-      // 1. Consulta no Google Cloud Firestore se ativo
+      // 1. Consulta no Nai Cloud Firestore se ativo
       if (firestoreDb) {
         try {
           const docId = normalized.replace(/[/.]/g, '_');
@@ -589,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return doc.data();
           }
         } catch (err) {
-          console.warn('Consulta ao Google Firestore falhou, a recorrer a dados locais:', err);
+          console.warn('Consulta ao Nai Firestore falhou, a recorrer a dados locais:', err);
         }
       }
 
@@ -822,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // --- VALIDAÇÃO PASSO 4: SENHA & CRIAÇÃO DA CONTA ---
+    // --- VALIDAÇÃO PASSO 4: SENHA ---
     if (currentStep === 4) {
       const pass = passEl ? passEl.value : '';
       const passConf = passConfEl ? passConfEl.value : '';
@@ -839,45 +1258,266 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Usar dados guardados em memória nos passos anteriores (100% fiável)
-      const fName    = _savedRegData.firstName || (firstNameEl ? firstNameEl.value.trim() : 'Utilizador');
-      const lName    = _savedRegData.lastName  || (lastNameEl  ? lastNameEl.value.trim()  : '');
-      const birth    = _savedRegData.birth     || (birthEl     ? birthEl.value            : '');
-      const gender   = _savedRegData.gender    || (genderEl    ? genderEl.value           : '');
-      const username = _savedRegData.username  || (emailEl     ? emailEl.value.trim().toLowerCase().split('@')[0].replace(/[^a-z0-9._-]/g, '') : '');
-
-      const fullName = `${fName} ${lName}`.trim();
-      const officialEmail = `${username}@nai.com`;
-
-      console.log('🚀 Criar conta — dados completos:', { fName, lName, birth, gender, username, officialEmail });
-
-      const genderMap = { 'M': 'Masculino', 'F': 'Feminino', 'O': 'Personalizado', 'N': 'Prefiro não dizer' };
-      const passHash = await hashPassword(pass);
-      const newUser = {
-        name: fullName,
-        firstName: fName,
-        lastName: lName,
-        username: username,
-        domain: '@nai.com',
-        birthDate: birth,
-        gender: gender,
-        genderLabel: genderMap[gender] || gender,
-        email: officialEmail,
-        passwordHash: passHash,
-        provider: 'nai',
-        createdAt: new Date().toISOString()
-      };
-
-      await NaiDB.saveUser(newUser);
-
-      // Limpar dados temporários após criação bem-sucedida
-      _savedRegData = { firstName: '', lastName: '', birth: '', gender: '', username: '' };
-
-      showToast(`Conta criada com sucesso! Bem-vindo, ${fName}! O seu e-mail é ${officialEmail}`, 'success');
-
-      window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
-      openSession(newUser);
+      // Guardar hash da palavra-passe e avançar para o Passo 5 (Carteira)
+      _savedRegData.passHash = await hashPassword(pass);
+      setRegisterStep(5);
+      showToast('Passo 5: Carteira e Dados Bancários (Opcional).', 'info');
+      return;
     }
+
+
+    // --- PASSO 5: CARTÃO / CARTEIRA & CRIAÇÃO DA CONTA (4 sub-etapas) ---
+    if (currentStep === 5) {
+      const sub = currentRegBankSubStep[mode] || 1;
+      if (sub === 1) {
+        validateAndAdvanceRegSubStep1(mode);
+      } else if (sub === 2) {
+        setRegisterBankSubStep(mode, 3);
+      } else if (sub === 3) {
+        validateAndAdvanceRegSubStep3(mode);
+      } else if (sub === 4) {
+        await submitRegistrationBanking(mode);
+      }
+      return;
+    }
+  }
+
+  // Validação da Sub-etapa 5.1 (Cartão de Pagamento)
+  function validateAndAdvanceRegSubStep1(mode) {
+    const prefix = mode === 'slider' ? 'slider' : 'side';
+    const cardNumEl    = document.getElementById(`${prefix}RegCardNum`);
+    const cardExpEl    = document.getElementById(`${prefix}RegCardExp`);
+    const cardCvcEl    = document.getElementById(`${prefix}RegCardCvc`);
+    const cardHolderEl = document.getElementById(`${prefix}RegCardHolder`);
+
+    const rawNum    = cardNumEl    ? cardNumEl.value.replace(/\s+/g, '') : '';
+    const expVal    = cardExpEl    ? cardExpEl.value.trim()              : '';
+    const cvcVal    = cardCvcEl    ? cardCvcEl.value.trim()              : '';
+    const holderVal = cardHolderEl ? cardHolderEl.value.trim()           : '';
+
+    const brand = detectRealBrand(rawNum);
+    if (!brand) {
+      showToast('Número de cartão inválido ou emitente não reconhecido.', 'error');
+      if (cardNumEl) cardNumEl.focus();
+      return false;
+    }
+    if (!validateLuhn(rawNum)) {
+      showToast('Número de cartão inválido (falha na verificação Luhn).', 'error');
+      if (cardNumEl) cardNumEl.focus();
+      return false;
+    }
+
+    const expMatch = expVal.match(/^(\d{2})\/(\d{2})$/);
+    if (!expMatch) {
+      showToast('Introduza a validade no formato MM/AA.', 'error');
+      if (cardExpEl) cardExpEl.focus();
+      return false;
+    }
+    const expMonth = parseInt(expMatch[1], 10);
+    const expYear  = 2000 + parseInt(expMatch[2], 10);
+    const now      = new Date();
+    if (expMonth < 1 || expMonth > 12 || expYear < now.getFullYear() ||
+        (expYear === now.getFullYear() && expMonth < now.getMonth() + 1)) {
+      showToast('O cartão está expirado ou a data de validade é inválida.', 'error');
+      if (cardExpEl) cardExpEl.focus();
+      return false;
+    }
+
+    const cvcLen = brand === 'American Express' ? 4 : 3;
+    if (!cvcVal || cvcVal.length < cvcLen || !/^\d+$/.test(cvcVal)) {
+      showToast(`O CVC deve ter ${cvcLen} dígitos para cartões ${brand}.`, 'error');
+      if (cardCvcEl) cardCvcEl.focus();
+      return false;
+    }
+
+    if (!holderVal || holderVal.length < 3) {
+      showToast('Introduza o nome do titular do cartão (mín. 3 caracteres).', 'error');
+      if (cardHolderEl) cardHolderEl.focus();
+      return false;
+    }
+
+    setRegisterBankSubStep(mode, 2);
+    return true;
+  }
+
+  // Validação da Sub-etapa 5.3 (Morada de Faturação)
+  function validateAndAdvanceRegSubStep3(mode) {
+    const prefix = mode === 'slider' ? 'slider' : 'side';
+    const addressEl    = document.getElementById(`${prefix}RegAddress`);
+    const postalCodeEl = document.getElementById(`${prefix}RegPostalCode`);
+    const cityEl       = document.getElementById(`${prefix}RegCity`);
+
+    const addressVal    = addressEl    ? addressEl.value.trim()    : '';
+    const postalCodeVal = postalCodeEl ? postalCodeEl.value.trim() : '';
+    const cityVal       = cityEl       ? cityEl.value.trim()       : '';
+
+    if (!addressVal) {
+      showToast('Introduza o endereço de faturação do cartão.', 'error');
+      if (addressEl) addressEl.focus();
+      return false;
+    }
+    if (!postalCodeVal) {
+      showToast('Introduza o código postal.', 'error');
+      if (postalCodeEl) postalCodeEl.focus();
+      return false;
+    }
+    if (!cityVal) {
+      showToast('Introduza a cidade.', 'error');
+      if (cityEl) cityEl.focus();
+      return false;
+    }
+
+    setRegisterBankSubStep(mode, 4);
+    return true;
+  }
+
+  // Gravação final dos dados da Carteira e Finalização da Conta
+  async function submitRegistrationBanking(mode) {
+    const prefix = mode === 'slider' ? 'slider' : 'side';
+    const cardNumEl    = document.getElementById(`${prefix}RegCardNum`);
+    const cardExpEl    = document.getElementById(`${prefix}RegCardExp`);
+    const cardCvcEl    = document.getElementById(`${prefix}RegCardCvc`);
+    const cardHolderEl = document.getElementById(`${prefix}RegCardHolder`);
+
+    const rawNum    = cardNumEl    ? cardNumEl.value.replace(/\s+/g, '') : '';
+    const expVal    = cardExpEl    ? cardExpEl.value.trim()              : '';
+    const cvcVal    = cardCvcEl    ? cardCvcEl.value.trim()              : '';
+    const holderVal = cardHolderEl ? cardHolderEl.value.trim()           : '';
+
+    const brand = detectRealBrand(rawNum);
+    if (!brand || !validateLuhn(rawNum)) {
+      showToast('Dados do cartão inválidos. Volte à etapa 1.', 'error');
+      setRegisterBankSubStep(mode, 1);
+      return;
+    }
+
+    // Morada
+    const countryEl    = document.getElementById(`${prefix}RegCountry`);
+    const addressEl    = document.getElementById(`${prefix}RegAddress`);
+    const apartmentEl  = document.getElementById(`${prefix}RegApartment`);
+    const postalCodeEl = document.getElementById(`${prefix}RegPostalCode`);
+    const cityEl       = document.getElementById(`${prefix}RegCity`);
+
+    const countryVal    = countryEl    ? countryEl.value.trim()    : 'Portugal';
+    const addressVal    = addressEl    ? addressEl.value.trim()    : '';
+    const apartmentVal  = apartmentEl  ? apartmentEl.value.trim()  : '';
+    const postalCodeVal = postalCodeEl ? postalCodeEl.value.trim() : '';
+    const cityVal       = cityEl       ? cityEl.value.trim()       : '';
+
+    if (!addressVal || !postalCodeVal || !cityVal) {
+      showToast('Por favor, preencha a morada de faturação.', 'error');
+      setRegisterBankSubStep(mode, 3);
+      return;
+    }
+
+    // Campos complementares
+    const cardTypeEl   = document.getElementById(`${prefix}RegCardType`);
+    const bankNameEl   = document.getElementById(`${prefix}RegBankName`);
+    const balanceEl    = document.getElementById(`${prefix}RegBalance`);
+    const ibanEl       = document.getElementById(`${prefix}RegIban`);
+    const nifEl        = document.getElementById(`${prefix}RegNif`);
+    const phoneEl      = document.getElementById(`${prefix}RegPhone`);
+
+    const cardTypeVal  = cardTypeEl ? cardTypeEl.value.trim() : 'Débito';
+    const bankNameVal  = bankNameEl ? bankNameEl.value.trim() : '';
+    const balanceVal   = balanceEl ? (parseFloat(balanceEl.value) || 0) : 0;
+    const ibanVal      = ibanEl ? ibanEl.value.trim() : '';
+    const nifVal       = nifEl ? nifEl.value.trim() : '';
+    const phoneVal     = phoneEl ? phoneEl.value.trim() : '';
+
+    const last4 = rawNum.slice(-4);
+    _savedRegData.paymentCard = {
+      id:              `card_${Date.now()}`,
+      brand,
+      cardType:        cardTypeVal,
+      last4,
+      cardNumberMasked: `•••• •••• •••• ${last4}`,
+      expiry:          expVal,
+      holder:          holderVal.toUpperCase(),
+      bankName:        bankNameVal || brand,
+      iban:            ibanVal || null,
+      balance:         balanceVal,
+      billingAddress: {
+        country:    countryVal,
+        address:    addressVal,
+        apartment:  apartmentVal,
+        postalCode: postalCodeVal,
+        city:       cityVal,
+        nif:        nifVal || null,
+        phone:      phoneVal || null,
+        formatted:  [addressVal, apartmentVal, postalCodeVal, cityVal, countryVal].filter(Boolean).join(', ')
+      },
+      isDefault: true,
+      addedAt:   new Date().toISOString()
+    };
+
+    _savedRegData.banking = {
+      hasBanking: true,
+      bankName: bankNameVal || brand,
+      iban: ibanVal || null,
+      balance: balanceVal,
+      currency: 'EUR',
+      nif: nifVal || null,
+      phone: phoneVal || null
+    };
+
+    await finalizeAccountCreation(mode);
+  }
+
+  // Função final de gravação e inicialização da conta criada
+  async function finalizeAccountCreation(mode = 'slider') {
+    const fName    = _savedRegData.firstName || 'Utilizador';
+    const lName    = _savedRegData.lastName  || '';
+    const fullName = `${fName} ${lName}`.trim();
+    const officialEmail = `${_savedRegData.username}@nai.com`;
+
+    const genderMap = { 'M': 'Masculino', 'F': 'Feminino', 'O': 'Personalizado', 'N': 'Prefiro não dizer' };
+
+    const paymentCards = [];
+    if (_savedRegData.paymentCard) {
+      paymentCards.push(_savedRegData.paymentCard);
+    }
+
+    const regBank = _savedRegData.banking || {};
+    const newUser = {
+      name: fullName,
+      firstName: fName,
+      lastName: lName,
+      username: _savedRegData.username,
+      domain: '@nai.com',
+      birthDate: _savedRegData.birth,
+      gender: _savedRegData.gender,
+      genderLabel: genderMap[_savedRegData.gender] || _savedRegData.gender,
+      email: officialEmail,
+      passwordHash: _savedRegData.passHash,
+      provider: 'nai',
+      paymentCards,
+      banking: {
+        hasBanking: paymentCards.length > 0 || Boolean(regBank.hasBanking),
+        bankName: regBank.bankName || (paymentCards.length > 0 ? paymentCards[0].brand : null),
+        iban: regBank.iban || null,
+        balance: typeof regBank.balance === 'number' ? regBank.balance : 0,
+        currency: 'EUR',
+        nif: regBank.nif || null,
+        phone: regBank.phone || null,
+        linkedAt: (paymentCards.length > 0 || regBank.hasBanking) ? new Date().toISOString() : null
+      },
+      authorizedApps: [],
+      createdAt: new Date().toISOString()
+    };
+
+    await NaiDB.saveUser(newUser);
+
+    // Limpar dados temporários após criação bem-sucedida
+    _savedRegData = {
+      firstName: '', lastName: '', birth: '', gender: '', username: '', passHash: '',
+      paymentCard: null, banking: null
+    };
+
+    showToast(`Conta criada com sucesso! Bem-vindo, ${fName}! O seu e-mail é ${officialEmail}`, 'success');
+
+    window.dispatchEvent(new CustomEvent('auth:register', { detail: newUser }));
+    openSession(newUser);
   }
 
   async function handleLoginAction(emailOrUsername, password) {
@@ -937,10 +1577,103 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /* -------------------------------------------------------------------
+     Passo 5 — Formatação, validação ao vivo e navegação das 4 sub-etapas
+     (Slider e Side registration forms)
+  ------------------------------------------------------------------- */
+  function wireCardStep5(prefix, hintId) {
+    const Cap = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    const cardNumEl  = document.getElementById(`${prefix}RegCardNum`);
+    const cardExpEl  = document.getElementById(`${prefix}RegCardExp`);
+    const hintEl     = document.getElementById(hintId);
+
+    if (cardNumEl) {
+      cardNumEl.addEventListener('input', () => {
+        // Formato grupos de 4 dígitos
+        const raw = cardNumEl.value.replace(/\D/g, '').substring(0, 16);
+        const parts = [];
+        for (let i = 0; i < raw.length; i += 4) parts.push(raw.substring(i, i + 4));
+        cardNumEl.value = parts.join(' ');
+
+        // Feedback do emissor em tempo real
+        const issuer = detectRealBrand(raw);
+        if (hintEl) {
+          if (issuer) {
+            hintEl.textContent = `✓ Emissor: ${issuer}`;
+            hintEl.style.color = '#10b981';
+          } else if (raw.length >= 4) {
+            hintEl.textContent = '✗ Prefixo de cartão não reconhecido';
+            hintEl.style.color = '#ef4444';
+          } else {
+            hintEl.textContent = '';
+          }
+        }
+      });
+    }
+
+    if (cardExpEl) {
+      cardExpEl.addEventListener('input', () => {
+        const raw = cardExpEl.value.replace(/\D/g, '').substring(0, 4);
+        cardExpEl.value = raw.length >= 2 ? raw.substring(0, 2) + '/' + raw.substring(2) : raw;
+      });
+    }
+
+    // Sub-etapa 1: Voltar para Senha, Seguinte para Banco, Saltar
+    const back1 = document.getElementById(`btn${Cap}BankBack1`);
+    if (back1) back1.addEventListener('click', () => setRegisterStep(4));
+
+    const next1 = document.getElementById(`btn${Cap}BankNext1`);
+    if (next1) next1.addEventListener('click', () => validateAndAdvanceRegSubStep1(prefix));
+
+    const skip1 = document.getElementById(`btn${Cap}SkipBanking`);
+    if (skip1) skip1.addEventListener('click', async () => {
+      _savedRegData.paymentCard = null;
+      _savedRegData.banking = null;
+      await finalizeAccountCreation(prefix);
+    });
+
+    // Sub-etapa 2: Voltar para Cartão, Seguinte para Morada, Saltar Banco
+    const back2 = document.getElementById(`btn${Cap}BankBack2`);
+    if (back2) back2.addEventListener('click', () => setRegisterBankSubStep(prefix, 1));
+
+    const next2 = document.getElementById(`btn${Cap}BankNext2`);
+    if (next2) next2.addEventListener('click', () => setRegisterBankSubStep(prefix, 3));
+
+    const skip2 = document.getElementById(`btn${Cap}BankSkip2`);
+    if (skip2) skip2.addEventListener('click', () => setRegisterBankSubStep(prefix, 3));
+
+    // Sub-etapa 3: Voltar para Banco, Seguinte para Fiscal
+    const back3 = document.getElementById(`btn${Cap}BankBack3`);
+    if (back3) back3.addEventListener('click', () => setRegisterBankSubStep(prefix, 2));
+
+    const next3 = document.getElementById(`btn${Cap}BankNext3`);
+    if (next3) next3.addEventListener('click', () => validateAndAdvanceRegSubStep3(prefix));
+
+    // Sub-etapa 4: Voltar para Morada, Criar Conta, Saltar
+    const back4 = document.getElementById(`btn${Cap}BankBack4`);
+    if (back4) back4.addEventListener('click', () => setRegisterBankSubStep(prefix, 3));
+
+    const finish = document.getElementById(`btn${Cap}BankFinish`);
+    if (finish) finish.addEventListener('click', async () => {
+      await submitRegistrationBanking(prefix);
+    });
+
+    const skip4 = document.getElementById(`btn${Cap}SkipBanking4`);
+    if (skip4) skip4.addEventListener('click', async () => {
+      _savedRegData.paymentCard = null;
+      _savedRegData.banking = null;
+      await finalizeAccountCreation(prefix);
+    });
+  }
+
+  wireCardStep5('slider', 'sliderCardBrandHint');
+  wireCardStep5('side',   'sideCardBrandHint');
+
+
   /* ==========================================================================
      7. INTEGRAÇÃO LOGIN COM O GOOGLE (GOOGLE SIGN-IN)
      ========================================================================== */
-  // Configure o seu Google Client ID aqui se desejar (ex: 'xxxx.apps.googleusercontent.com')
+  // Configure o seu Nai Client ID aqui se desejar (ex: 'xxxx.apps.googleusercontent.com')
   window.GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || '';
 
   function handleGoogleCredential(response) {
@@ -953,7 +1686,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const payload = JSON.parse(jsonPayload);
       const googleUser = {
-        name: payload.name || 'Utilizador Google',
+        name: payload.name || 'Utilizador Nai',
         email: payload.email,
         picture: payload.picture,
         provider: 'google',
@@ -961,14 +1694,14 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       saveUser(googleUser);
-      showToast(`Bem-vindo, ${googleUser.name}! Sessão iniciada com a Google.`, 'success');
+      showToast(`Bem-vindo, ${googleUser.name}! Sessão iniciada com a Nai.`, 'success');
 
       window.dispatchEvent(new CustomEvent('auth:google', { detail: googleUser }));
       window.dispatchEvent(new CustomEvent('auth:login', { detail: googleUser }));
       openSession(googleUser);
     } catch (err) {
-      console.error('Erro ao ler token da Google:', err);
-      showToast('Erro ao autenticar com a Google.', 'error');
+      console.error('Erro ao ler token da Nai:', err);
+      showToast('Erro ao autenticar com a Nai.', 'error');
     }
   }
 
@@ -981,16 +1714,16 @@ document.addEventListener('DOMContentLoaded', () => {
       window.google.accounts.id.prompt();
     } else {
       // Modo Demonstração Rápido / Fallback Inteligente
-      const choice = confirm('Deseja iniciar sessão com a conta Google de teste?\n(Para usar a API real de produção, configure o GOOGLE_CLIENT_ID no script.js)');
+      const choice = confirm('Deseja iniciar sessão com a conta Nai de teste?\n(Para usar a API real de produção, configure o GOOGLE_CLIENT_ID no script.js)');
       if (choice) {
         const demoGoogleUser = {
-          name: 'Utilizador Google',
+          name: 'Utilizador Nai',
           email: 'demo.google@gmail.com',
           provider: 'google',
           createdAt: new Date().toISOString()
         };
         saveUser(demoGoogleUser);
-        showToast('Sessão iniciada com a Conta Google!', 'success');
+        showToast('Sessão iniciada com a Conta Nai!', 'success');
         window.dispatchEvent(new CustomEvent('auth:google', { detail: demoGoogleUser }));
         window.dispatchEvent(new CustomEvent('auth:login', { detail: demoGoogleUser }));
         openSession(demoGoogleUser);
@@ -1079,7 +1812,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Guarda a sessão SSO (a mesma chave que o dashboard lê)
     const token = saveSession(user);
 
-    // Se aberto em modo Popup por uma app externa (estilo Google Sign-In Popup):
+    // Se veio de uma app externa via SSO e requer dados bancários mas o utilizador não tem dados configurados:
+    const hasFinancialSetup = Boolean((user.banking && user.banking.hasBanking) || (user.paymentCards && user.paymentCards.length > 0) || (user.paymentCard && user.paymentCard.number));
+    if (isSSORequest && requiresBanking && !hasFinancialSetup) {
+      if (ssoAuthScreen) {
+        if (interactiveDisplay) interactiveDisplay.style.display = 'none';
+        if (sideBySideDisplay)  sideBySideDisplay.style.display  = 'none';
+        ssoAuthScreen.style.display = 'flex';
+        const ssoConsentInitialView = document.getElementById('ssoConsentInitialView');
+        if (ssoConsentInitialView) ssoConsentInitialView.style.display = 'none';
+        const ssoRequiredBankingPanel = document.getElementById('ssoRequiredBankingPanel');
+        if (ssoRequiredBankingPanel) ssoRequiredBankingPanel.style.display = 'block';
+        if (typeof window.setSSOBankStep === 'function') window.setSSOBankStep(1);
+        showToast(`A aplicação ${ssoAppName || 'externa'} necessita dos seus dados bancários para o acesso.`, 'info');
+        return;
+      }
+    }
+
+    // Se aberto em modo Popup por uma app externa (estilo Nai Sign-In Popup):
     if (window.opener) {
       showToast(`Autenticado! A ligar a ${ssoAppName || 'aplicação'}...`, 'success');
       try {

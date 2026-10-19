@@ -2580,3 +2580,27 @@ x:-o-prefocus{
 }
 sentinel{
 }
+
+/* ============================================================================
+   Nai — cabeçalho: substitui o logotipo Google por "Nai".
+   O logótipo do canto superior esquerdo era uma imagem de fundo (o wordmark
+   "Google") no pseudo-elemento span.gb_re::before, seguido do texto "Conta".
+   Aqui trocamos essa imagem pelo texto "Nai", com a mesma fonte/tamanho do
+   "Conta" ao lado, para se ler "Nai Conta".
+   Só afeta as páginas de intro/ (as únicas que incluem este ficheiro).
+   ============================================================================ */
+.gb_7c .gb_re {
+  width: auto !important;
+}
+.gb_7c .gb_re:before {
+  content: "Nai" !important;
+  background-image: none !important;
+  width: auto !important;
+  font-family: Product Sans, Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0;
+  color: #e3e3e3;
+  vertical-align: middle;
+}
